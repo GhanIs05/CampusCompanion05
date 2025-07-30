@@ -24,10 +24,12 @@ export function SidebarNav() {
     <SidebarMenu>
       {navItems.map((item) => (
         <SidebarMenuItem key={item.href}>
-          <Link href={item.href} passHref legacyBehavior>
+          <Link href={item.href} passHref>
             <SidebarMenuButton asChild isActive={isActive(item.href)} tooltip={item.label}>
-              <item.icon />
-              <span>{item.label}</span>
+              <div>
+                <item.icon />
+                <span>{item.label}</span>
+              </div>
             </SidebarMenuButton>
           </Link>
         </SidebarMenuItem>
