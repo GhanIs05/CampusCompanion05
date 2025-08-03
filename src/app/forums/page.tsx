@@ -14,6 +14,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
+import Link from 'next/link';
 
 export default function ForumsPage() {
   const [searchTerm, setSearchTerm] = useState('');
@@ -63,7 +64,9 @@ export default function ForumsPage() {
     });
   };
   
-  const handleUpvote = (threadId: string) => {
+  const handleUpvote = (e: React.MouseEvent, threadId: string) => {
+    e.preventDefault();
+    e.stopPropagation();
     setThreads(threads.map(thread => 
       thread.id === threadId 
         ? { ...thread, upvotes: thread.upvotes + 1 }
@@ -143,37 +146,37 @@ export default function ForumsPage() {
 
         <div className="space-y-4">
           {filteredThreads.map((thread) => (
-            <Card key={thread.id}>
-              <CardHeader>
-                <CardTitle className="font-headline text-lg">{thread.title}</CardTitle>
-                <CardDescription>
-                  Posted by {thread.author} in <Badge variant="secondary">{thread.course}</Badge> - {thread.timestamp}
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="flex items-center gap-2 flex-wrap">
-                  <Tag className="h-4 w-4 text-muted-foreground" />
-                  {thread.tags.map((tag) => (
-                    <Badge key={tag} variant="outline">{tag}</Badge>
-                  ))}
-                </div>
-              </CardContent>
-              <CardFooter className="flex items-center gap-6">
-                <Button variant="ghost" size="sm" onClick={() => handleUpvote(thread.id)}>
-                  <ArrowUp className="h-5 w-5 mr-2" />
-                  <span>{thread.upvotes} Upvotes</span>
-                </Button>
-                <div className="flex items-center gap-2 text-muted-foreground">
-                  <MessageCircle className="h-5 w-5" />
-                  <span>{thread.replies} Replies</span>
-                </div>
-              </CardFooter>
-            </Card>
+            <Link href={`/forums/${thread.id}`} key={thread.id} className="block hover:bg-muted/50 rounded-lg">
+                <Card>
+                <CardHeader>
+                    <CardTitle className="font-headline text-lg">{thread.title}</CardTitle>
+                    <CardDescription>
+                    Posted by {thread.author} in <Badge variant="secondary">{thread.course}</Badge> - {thread.timestamp}
+                    </CardDescription>
+                </CardHeader>
+                <CardContent>
+                    <div className="flex items-center gap-2 flex-wrap">
+                    <Tag className="h-4 w-4 text-muted-foreground" />
+                    {thread.tags.map((tag) => (
+                        <Badge key={tag} variant="outline">{tag}</Badge>
+                    ))}
+                    </div>
+                </CardContent>
+                <CardFooter className="flex items-center gap-6">
+                    <Button variant="ghost" size="sm" onClick={(e) => handleUpvote(e, thread.id)}>
+                    <ArrowUp className="h-5 w-5 mr-2" />
+                    <span>{thread.upvotes} Upvotes</span>
+                    </Button>
+                    <div className="flex items-center gap-2 text-muted-foreground">
+                    <MessageCircle className="h-5 w-5" />
+                    <span>{thread.replies} Replies</span>
+                    </div>
+                </CardFooter>
+                </Card>
+            </Link>
           ))}
         </div>
       </main>
     </div>
   );
 }
-
-    
