@@ -12,6 +12,7 @@ interface AuthContextType {
   login: (email: string, pass: string) => Promise<any>;
   register: (email: string, pass: string, name: string) => Promise<any>;
   logout: () => Promise<void>;
+  updateUserProfile: (name: string, photoURL: string) => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType>({
@@ -20,6 +21,7 @@ const AuthContext = createContext<AuthContextType>({
   login: async () => {},
   register: async () => {},
   logout: async () => {},
+  updateUserProfile: async () => {},
 });
 
 export const AuthProvider: React.FC<{children: React.ReactNode}> = ({ children }) => {
@@ -41,7 +43,8 @@ export const AuthProvider: React.FC<{children: React.ReactNode}> = ({ children }
 
   const register = async (email: string, pass: string, name: string) => {
     const userCredential = await createUserWithEmailAndPassword(auth, email, pass);
-    await updateProfile(userCredential.user, { displayName: name });
+    const photoURL = 'https://placehold.co/100x100.png';
+    await updateProfile(userCredential.user, { displayName: name, photoURL });
     
     // Create user profile in firestore
     const userDocRef = doc(db, 'users', userCredential.user.uid);
@@ -50,11 +53,19 @@ export const AuthProvider: React.FC<{children: React.ReactNode}> = ({ children }
       email: email,
       role: 'Student',
       bio: '',
-      avatar: 'https://placehold.co/100x100.png',
+      avatar: photoURL,
       pinnedResources: [],
     });
     
     return userCredential;
+  }
+  
+  const updateUserProfile = async (name: string, photoURL: string) => {
+    if (auth.currentUser) {
+        await updateProfile(auth.currentUser, { displayName: name, photoURL: photoURL });
+        // Manually trigger a user state update if needed, though onAuthStateChanged should catch it.
+        setUser(auth.currentUser);
+    }
   }
 
   const logout = async () => {
@@ -62,12 +73,10 @@ export const AuthProvider: React.FC<{children: React.ReactNode}> = ({ children }
   };
 
   return (
-    <AuthContext.Provider value={{ user, loading, login, register, logout }}>
+    <AuthContext.Provider value={{ user, loading, login, register, logout, updateUserProfile }}>
       {children}
     </AuthContext.Provider>
   );
 };
 
 export const useAuth = () => useContext(AuthContext);
-
-    

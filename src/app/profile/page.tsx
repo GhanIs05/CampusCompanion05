@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -11,8 +11,11 @@ import { Textarea } from "@/components/ui/textarea";
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
-import { db } from '@/lib/firebase';
+import { db, storage } from '@/lib/firebase';
+import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import { PageWrapper } from '@/components/PageWrapper';
+import { Loader2 } from 'lucide-react';
+
 
 interface UserProfile {
     name: string;
@@ -24,7 +27,7 @@ interface UserProfile {
 }
 
 export default function ProfilePage() {
-    const { user, loading } = useAuth();
+    const { user, loading, updateUserProfile } = useAuth();
     const [userProfile, setUserProfile] = useState<UserProfile>({
         name: '',
         email: '',
@@ -34,6 +37,9 @@ export default function ProfilePage() {
         pinnedResources: [],
     });
     const { toast } = useToast();
+    const [avatarFile, setAvatarFile] = useState<File | null>(null);
+    const [uploading, setUploading] = useState(false);
+    const fileInputRef = useRef<HTMLInputElement>(null);
     
     useEffect(() => {
         if (user) {
@@ -44,7 +50,6 @@ export default function ProfilePage() {
                 if (docSnap.exists()) {
                     setUserProfile(docSnap.data() as UserProfile);
                 } else {
-                    // This case is handled by registration, but as a fallback:
                     setUserProfile(prev => ({
                         ...prev,
                         name: user.displayName || '',
@@ -62,23 +67,56 @@ export default function ProfilePage() {
         setUserProfile((prev) => ({ ...prev, [field]: value }));
     };
 
+    const handleAvatarChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        if (e.target.files && e.target.files[0]) {
+            const file = e.target.files[0];
+            setAvatarFile(file);
+            // Show preview
+            const reader = new FileReader();
+            reader.onloadend = () => {
+                setUserProfile(prev => ({ ...prev, avatar: reader.result as string }));
+            };
+            reader.readAsDataURL(file);
+        }
+    };
+    
+    const triggerFileSelect = () => fileInputRef.current?.click();
+
     const handleSaveChanges = async () => {
-        if (user) {
-            try {
-                // We only want to save profile fields, not the pinned resources here
-                const { pinnedResources, ...profileData } = userProfile;
-                await setDoc(doc(db, "users", user.uid), profileData, { merge: true });
-                toast({
-                    title: "Profile Updated",
-                    description: "Your profile information has been saved.",
-                });
-            } catch (error: any) {
-                toast({
-                    variant: "destructive",
-                    title: "Update Failed",
-                    description: error.message,
-                });
+        if (!user) return;
+
+        setUploading(true);
+        let avatarUrl = userProfile.avatar;
+
+        try {
+            // Upload new avatar if selected
+            if (avatarFile) {
+                const storageRef = ref(storage, `avatars/${user.uid}/${avatarFile.name}`);
+                await uploadBytes(storageRef, avatarFile);
+                avatarUrl = await getDownloadURL(storageRef);
             }
+
+            // Update user profile in Firestore
+            const { pinnedResources, ...profileData } = userProfile;
+            const updatedProfileData = { ...profileData, avatar: avatarUrl };
+            await setDoc(doc(db, "users", user.uid), updatedProfileData, { merge: true });
+
+            // Update user profile in Firebase Auth
+            await updateUserProfile(userProfile.name, avatarUrl);
+
+            toast({
+                title: "Profile Updated",
+                description: "Your profile information has been successfully saved.",
+            });
+        } catch (error: any) {
+            toast({
+                variant: "destructive",
+                title: "Update Failed",
+                description: error.message,
+            });
+        } finally {
+            setUploading(false);
+            setAvatarFile(null);
         }
     };
     
@@ -96,9 +134,16 @@ export default function ProfilePage() {
                                 <AvatarImage src={userProfile.avatar} data-ai-hint="profile avatar" />
                                 <AvatarFallback>{userProfile.name?.charAt(0) || 'U'}</AvatarFallback>
                             </Avatar>
+                             <input 
+                                type="file" 
+                                ref={fileInputRef} 
+                                onChange={handleAvatarChange} 
+                                className="hidden"
+                                accept="image/png, image/jpeg"
+                            />
                             <div className="flex flex-col gap-2">
-                                <Button>Upload new photo</Button>
-                                <Button variant="ghost">Delete</Button>
+                                <Button onClick={triggerFileSelect}>Upload new photo</Button>
+                                <Button variant="ghost" disabled>Delete</Button>
                             </div>
                         </div>
 
@@ -132,7 +177,10 @@ export default function ProfilePage() {
                             <Textarea id="bio" placeholder="Tell us a little about yourself" className="min-h-[100px]" value={userProfile.bio} onChange={(e) => handleInputChange('bio', e.target.value)} />
                         </div>
                         <div className="flex justify-end">
-                            <Button className="bg-accent hover:bg-accent/90 text-accent-foreground" onClick={handleSaveChanges}>Save Changes</Button>
+                            <Button className="bg-accent hover:bg-accent/90 text-accent-foreground" onClick={handleSaveChanges} disabled={uploading}>
+                                {uploading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                                Save Changes
+                            </Button>
                         </div>
                     </CardContent>
                 </Card>
@@ -140,5 +188,3 @@ export default function ProfilePage() {
         </PageWrapper>
     );
 }
-
-    
