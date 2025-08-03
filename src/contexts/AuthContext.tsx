@@ -51,6 +51,7 @@ export const AuthProvider: React.FC<{children: React.ReactNode}> = ({ children }
       role: 'Student',
       bio: '',
       avatar: 'https://placehold.co/100x100.png',
+      pinnedResources: [],
     });
     
     return userCredential;
@@ -68,3 +69,5 @@ export const AuthProvider: React.FC<{children: React.ReactNode}> = ({ children }
 };
 
 export const useAuth = () => useContext(AuthContext);
+
+    

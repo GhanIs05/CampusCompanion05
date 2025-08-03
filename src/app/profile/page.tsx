@@ -14,14 +14,24 @@ import { doc, getDoc, setDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { PageWrapper } from '@/components/PageWrapper';
 
+interface UserProfile {
+    name: string;
+    email: string;
+    role: string;
+    bio: string;
+    avatar: string;
+    pinnedResources?: string[];
+}
+
 export default function ProfilePage() {
     const { user, loading } = useAuth();
-    const [userProfile, setUserProfile] = useState({
+    const [userProfile, setUserProfile] = useState<UserProfile>({
         name: '',
         email: '',
         role: '',
         bio: '',
         avatar: '',
+        pinnedResources: [],
     });
     const { toast } = useToast();
     
@@ -32,8 +42,9 @@ export default function ProfilePage() {
                 const docSnap = await getDoc(docRef);
 
                 if (docSnap.exists()) {
-                    setUserProfile(docSnap.data() as any);
+                    setUserProfile(docSnap.data() as UserProfile);
                 } else {
+                    // This case is handled by registration, but as a fallback:
                     setUserProfile(prev => ({
                         ...prev,
                         name: user.displayName || '',
@@ -54,7 +65,9 @@ export default function ProfilePage() {
     const handleSaveChanges = async () => {
         if (user) {
             try {
-                await setDoc(doc(db, "users", user.uid), userProfile, { merge: true });
+                // We only want to save profile fields, not the pinned resources here
+                const { pinnedResources, ...profileData } = userProfile;
+                await setDoc(doc(db, "users", user.uid), profileData, { merge: true });
                 toast({
                     title: "Profile Updated",
                     description: "Your profile information has been saved.",
@@ -127,3 +140,5 @@ export default function ProfilePage() {
         </PageWrapper>
     );
 }
+
+    
