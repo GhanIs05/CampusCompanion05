@@ -1,4 +1,5 @@
 
+
 export const forumThreads = [
   {
     id: '1',
@@ -65,6 +66,7 @@ export const resourceLibrary = [
     uploader: 'Prof. Davis',
     date: '2023-09-15',
     fileType: 'pdf',
+    url: 'https://example.com/download/quantum-notes.pdf'
   },
   {
     id: 'res2',
@@ -73,6 +75,7 @@ export const resourceLibrary = [
     uploader: 'Alice Johnson',
     date: '2023-10-02',
     fileType: 'pdf',
+    url: 'https://example.com/download/fp-cheatsheet.pdf'
   },
   {
     id: 'res3',
@@ -81,6 +84,7 @@ export const resourceLibrary = [
     uploader: 'Charlie Brown',
     date: '2023-09-28',
     fileType: 'docx',
+    url: 'https://example.com/download/revolution-timeline.docx'
   },
   {
     id: 'res4',
@@ -89,6 +93,7 @@ export const resourceLibrary = [
     uploader: 'Admin',
     date: '2023-09-20',
     fileType: 'png',
+    url: 'https://example.com/download/respiration.png'
   },
    {
     id: 'res5',
@@ -97,6 +102,7 @@ export const resourceLibrary = [
     uploader: 'Prof. Smith',
     date: '2023-10-05',
     fileType: 'pdf',
+    url: 'https://example.com/download/history-essay.pdf'
   },
 ];
 
