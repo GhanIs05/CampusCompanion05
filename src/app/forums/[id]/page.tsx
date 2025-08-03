@@ -66,6 +66,11 @@ export default function ForumThreadPage() {
         const unsubscribeReplies = onSnapshot(q, (repliesSnap) => {
             const repliesData = repliesSnap.docs.map(doc => ({ id: doc.id, ...doc.data() } as Reply));
             setReplies(repliesData);
+            
+            // Update reply count on thread document for consistency on the main forums page
+            if (threadRef) {
+                updateDoc(threadRef, { replies: repliesData.length });
+            }
         });
 
         return () => {
@@ -87,14 +92,9 @@ export default function ForumThreadPage() {
             
             const repliesRef = collection(db, "forumThreads", threadId, "replies");
             await addDoc(repliesRef, newReply);
-            
-            const threadRef = doc(db, "forumThreads", threadId);
-            await updateDoc(threadRef, {
-                replies: increment(1)
-            });
 
             setReplyContent('');
-            // No need to manually refetch, onSnapshot will handle it.
+            // No need to manually refetch or increment, onSnapshot will handle it.
         } else if (!user) {
             toast({ variant: "destructive", title: "Not logged in", description: "You must be logged in to reply."});
         }
@@ -156,7 +156,7 @@ export default function ForumThreadPage() {
                             </Button>
                             <div className="flex items-center gap-2 text-muted-foreground">
                                 <MessageCircle className="h-5 w-5" />
-                                <span>{thread.replies} Replies</span>
+                                <span>{replies.length} Replies</span>
                             </div>
                         </CardFooter>
                     </Card>
