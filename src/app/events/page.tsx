@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState } from 'react';
@@ -6,8 +7,8 @@ import { Calendar } from '@/components/ui/calendar';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { AppHeader } from '@/components/AppHeader';
 import { events } from '@/lib/data';
-import { CheckCircle, Clock } from 'lucide-react';
-import { format } from 'date-fns';
+import { CheckCircle, Clock, PartyPopper } from 'lucide-react';
+import { format, isSameDay } from 'date-fns';
 
 export default function EventsPage() {
   const [date, setDate] = useState<Date | undefined>(new Date());
@@ -16,6 +17,8 @@ export default function EventsPage() {
   const handleRsvp = (eventId: string) => {
     setRsvps((prev) => ({ ...prev, [eventId]: !prev[eventId] }));
   };
+
+  const filteredEvents = date ? events.filter(event => isSameDay(event.date, date)) : [];
 
   return (
     <div className="flex flex-col h-full">
@@ -39,32 +42,42 @@ export default function EventsPage() {
             </Card>
           </div>
           <div className="lg:col-span-2">
-            <h2 className="text-2xl font-headline font-semibold mb-4">Upcoming Events</h2>
+            <h2 className="text-2xl font-headline font-semibold mb-4">
+              Events for {date ? format(date, 'PPP') : '...'}
+            </h2>
             <div className="space-y-4">
-              {events.map((event) => (
-                <Card key={event.id}>
-                  <CardHeader>
-                    <CardTitle className="font-headline">{event.title}</CardTitle>
-                    <div className="flex items-center text-sm text-muted-foreground pt-1">
-                        <Clock className="h-4 w-4 mr-2" />
-                        <span>{format(event.date, "PPP 'at' p")}</span>
-                    </div>
-                  </CardHeader>
-                  <CardContent>
-                    <p className="text-sm text-muted-foreground">{event.description}</p>
-                  </CardContent>
-                  <CardFooter>
-                    <Button
-                      onClick={() => handleRsvp(event.id)}
-                      variant={rsvps[event.id] ? 'secondary' : 'default'}
-                      className={rsvps[event.id] ? '' : 'bg-accent hover:bg-accent/90 text-accent-foreground'}
-                    >
-                      <CheckCircle className="mr-2 h-4 w-4" />
-                      {rsvps[event.id] ? 'RSVPed' : 'RSVP'}
-                    </Button>
-                  </CardFooter>
+              {filteredEvents.length > 0 ? (
+                filteredEvents.map((event) => (
+                  <Card key={event.id}>
+                    <CardHeader>
+                      <CardTitle className="font-headline">{event.title}</CardTitle>
+                      <div className="flex items-center text-sm text-muted-foreground pt-1">
+                          <Clock className="h-4 w-4 mr-2" />
+                          <span>{format(event.date, "p")}</span>
+                      </div>
+                    </CardHeader>
+                    <CardContent>
+                      <p className="text-sm text-muted-foreground">{event.description}</p>
+                    </CardContent>
+                    <CardFooter>
+                      <Button
+                        onClick={() => handleRsvp(event.id)}
+                        variant={rsvps[event.id] ? 'secondary' : 'default'}
+                        className={rsvps[event.id] ? '' : 'bg-accent hover:bg-accent/90 text-accent-foreground'}
+                      >
+                        <CheckCircle className="mr-2 h-4 w-4" />
+                        {rsvps[event.id] ? 'RSVPed' : 'RSVP'}
+                      </Button>
+                    </CardFooter>
+                  </Card>
+                ))
+              ) : (
+                <Card className="flex flex-col items-center justify-center p-8 border-dashed">
+                    <PartyPopper className="h-12 w-12 text-muted-foreground mb-4" />
+                    <CardTitle className="font-headline text-lg">No Events Scheduled</CardTitle>
+                    <CardDescription className="mt-2">There are no events for this day. Try another date!</CardDescription>
                 </Card>
-              ))}
+              )}
             </div>
           </div>
         </div>
