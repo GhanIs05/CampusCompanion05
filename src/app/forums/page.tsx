@@ -13,7 +13,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
 import Link from 'next/link';
-import { collection, addDoc, getDocs, doc, updateDoc, increment, writeBatch } from 'firebase/firestore';
+import { collection, addDoc, getDocs, doc, updateDoc, increment, writeBatch, runTransaction, arrayUnion, arrayRemove, getDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { useAuth } from '@/contexts/AuthContext';
 import { PageWrapper } from '@/components/PageWrapper';
@@ -30,6 +30,7 @@ interface ForumThread {
     timestamp: string;
     tags: string[];
     body: string;
+    upvotedBy: string[];
 }
 
 
@@ -54,7 +55,11 @@ export default function ForumsPage() {
     sampleForumThreads.forEach((thread) => {
         const { id, ...threadData } = thread;
         const threadRef = doc(collection(db, "forumThreads"));
-        batch.set(threadRef, threadData);
+        const dataWithUpvotedBy = {
+          ...threadData,
+          upvotedBy: [],
+        }
+        batch.set(threadRef, dataWithUpvotedBy);
     });
     await batch.commit();
   }
@@ -108,6 +113,7 @@ export default function ForumsPage() {
       timestamp: new Date().toISOString(),
       tags: newPost.tags.split(',').map(tag => tag.trim()).filter(Boolean),
       body: newPost.body,
+      upvotedBy: [],
     };
 
     try {
@@ -133,14 +139,50 @@ export default function ForumsPage() {
         return;
     }
     const threadRef = doc(db, "forumThreads", threadId);
-    await updateDoc(threadRef, {
-        upvotes: increment(1)
-    });
-    setThreads(threads.map(thread => 
-      thread.id === threadId 
-        ? { ...thread, upvotes: thread.upvotes + 1 }
-        : thread
-    ));
+
+    try {
+      await runTransaction(db, async (transaction) => {
+        const threadDoc = await transaction.get(threadRef);
+        if (!threadDoc.exists()) {
+          throw "Document does not exist!";
+        }
+
+        const threadData = threadDoc.data();
+        const upvotedBy = threadData.upvotedBy || [];
+        const hasUpvoted = upvotedBy.includes(user.uid);
+        
+        let newUpvotedBy;
+        let newUpvotes;
+
+        if (hasUpvoted) {
+          // User is removing their upvote
+          newUpvotedBy = arrayRemove(user.uid);
+          newUpvotes = increment(-1);
+        } else {
+          // User is adding an upvote
+          newUpvotedBy = arrayUnion(user.uid);
+          newUpvotes = increment(1);
+        }
+        
+        transaction.update(threadRef, { upvotes: newUpvotes, upvotedBy: newUpvotedBy });
+
+        // Update local state immediately for better UX
+        setThreads(threads.map(thread => 
+          thread.id === threadId 
+            ? { 
+                ...thread, 
+                upvotes: thread.upvotes + (hasUpvoted ? -1 : 1),
+                upvotedBy: hasUpvoted
+                  ? thread.upvotedBy.filter(uid => uid !== user.uid)
+                  : [...(thread.upvotedBy || []), user.uid]
+              }
+            : thread
+        ));
+      });
+    } catch (error) {
+      console.error("Transaction failed: ", error);
+      toast({ variant: "destructive", title: "Error", description: "Could not process upvote." });
+    }
   };
 
   const filteredThreads = threads.filter(thread => {
@@ -254,9 +296,14 @@ export default function ForumsPage() {
                     </div>
                 </CardContent>
                 <CardFooter className="flex items-center gap-6">
-                    <Button variant="ghost" size="sm" onClick={(e) => handleUpvote(e, thread.id)}>
-                    <ArrowUp className="h-5 w-5 mr-2" />
-                    <span>{thread.upvotes} Upvotes</span>
+                    <Button 
+                      variant="ghost" 
+                      size="sm" 
+                      onClick={(e) => handleUpvote(e, thread.id)}
+                      className={user && thread.upvotedBy?.includes(user.uid) ? 'text-primary' : ''}
+                    >
+                      <ArrowUp className="h-5 w-5 mr-2" />
+                      <span>{thread.upvotes} Upvotes</span>
                     </Button>
                     <div className="flex items-center gap-2 text-muted-foreground">
                     <MessageCircle className="h-5 w-5" />
@@ -271,3 +318,5 @@ export default function ForumsPage() {
     </PageWrapper>
   );
 }
+
+    

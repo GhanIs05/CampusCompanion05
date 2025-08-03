@@ -9,7 +9,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { ArrowLeft, ArrowUp, CornerUpLeft, MessageCircle, Tag } from 'lucide-react';
 import { useParams } from 'next/navigation';
 import { useState, useEffect } from 'react';
-import { doc, getDoc, collection, addDoc, getDocs, updateDoc, increment, onSnapshot, query, orderBy } from 'firebase/firestore';
+import { doc, getDoc, collection, addDoc, getDocs, updateDoc, increment, onSnapshot, query, orderBy, runTransaction, arrayUnion, arrayRemove } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
@@ -26,6 +26,7 @@ interface ForumThread {
     timestamp: string;
     tags: string[];
     body: string;
+    upvotedBy: string[];
 }
 
 interface Reply {
@@ -99,6 +100,46 @@ export default function ForumThreadPage() {
             toast({ variant: "destructive", title: "Not logged in", description: "You must be logged in to reply."});
         }
     };
+    
+      const handleUpvote = async () => {
+        if (!user || !thread) {
+            toast({ variant: "destructive", title: "Not logged in", description: "You must be logged in to upvote."});
+            return;
+        }
+        const threadRef = doc(db, "forumThreads", thread.id);
+
+        try {
+          await runTransaction(db, async (transaction) => {
+            const threadDoc = await transaction.get(threadRef);
+            if (!threadDoc.exists()) {
+              throw "Document does not exist!";
+            }
+
+            const threadData = threadDoc.data();
+            const upvotedBy = threadData.upvotedBy || [];
+            const hasUpvoted = upvotedBy.includes(user.uid);
+            
+            let newUpvotedBy;
+            let newUpvotes;
+
+            if (hasUpvoted) {
+              newUpvotedBy = arrayRemove(user.uid);
+              newUpvotes = increment(-1);
+            } else {
+              newUpvotedBy = arrayUnion(user.uid);
+              newUpvotes = increment(1);
+            }
+            
+            transaction.update(threadRef, { upvotes: newUpvotes, upvotedBy: newUpvotedBy });
+
+            // No need to update local state here as onSnapshot will take care of it
+          });
+        } catch (error) {
+          console.error("Transaction failed: ", error);
+          toast({ variant: "destructive", title: "Error", description: "Could not process upvote." });
+        }
+      };
+
 
     if (loading) {
         return (
@@ -158,7 +199,11 @@ export default function ForumThreadPage() {
                             </div>
                         </CardContent>
                         <CardFooter className="flex items-center gap-6">
-                            <Button variant="ghost">
+                            <Button 
+                                variant="ghost"
+                                onClick={handleUpvote}
+                                className={user && thread.upvotedBy?.includes(user.uid) ? 'text-primary' : ''}
+                            >
                                 <ArrowUp className="h-5 w-5 mr-2" />
                                 <span>{thread.upvotes} Upvotes</span>
                             </Button>
@@ -218,3 +263,5 @@ export default function ForumThreadPage() {
         </PageWrapper>
     );
 }
+
+    
