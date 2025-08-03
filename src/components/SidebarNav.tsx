@@ -7,7 +7,7 @@ import { SidebarGroup, SidebarGroupLabel, SidebarMenu, SidebarMenuItem, SidebarM
 import { MessageSquare, FolderKanban, Calendar, User, Home } from 'lucide-react';
 
 const mainNavItems = [
-  { href: '/forums', label: 'Home', icon: Home },
+  { href: '/home', label: 'Home', icon: Home },
   { href: '/forums', label: 'Forums', icon: MessageSquare },
   { href: '/resources', label: 'Resources', icon: FolderKanban },
   { href: '/events', label: 'Events', icon: Calendar },
@@ -21,8 +21,8 @@ export function SidebarNav() {
   const pathname = usePathname();
 
   const isActive = (href: string) => {
-    // Make forums active for the root path as well
-    if (href === '/forums' && pathname === '/') return true;
+    // Make home active for the root path as well
+    if (href === '/home' && pathname === '/') return true;
     return pathname === href;
   };
 

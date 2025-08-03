@@ -22,7 +22,7 @@ const nextConfig: NextConfig = {
     return [
       {
         source: '/',
-        destination: '/forums',
+        destination: '/home',
         permanent: true,
       },
     ]
