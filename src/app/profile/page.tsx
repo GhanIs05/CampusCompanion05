@@ -1,3 +1,6 @@
+'use client';
+
+import { useState } from 'react';
 import { AppHeader } from "@/components/AppHeader";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
@@ -6,9 +9,24 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import { userProfile } from "@/lib/data";
+import { userProfile as initialUserProfile } from "@/lib/data";
+import { useToast } from '@/hooks/use-toast';
 
 export default function ProfilePage() {
+    const [userProfile, setUserProfile] = useState(initialUserProfile);
+    const { toast } = useToast();
+
+    const handleInputChange = (field: string, value: string) => {
+        setUserProfile((prev) => ({ ...prev, [field]: value }));
+    };
+
+    const handleSaveChanges = () => {
+        toast({
+            title: "Profile Updated",
+            description: "Your profile information has been saved.",
+        });
+    };
+
     return (
         <div className="flex flex-col h-full">
             <AppHeader title="My Profile" />
@@ -33,17 +51,17 @@ export default function ProfilePage() {
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div className="space-y-2">
                                 <Label htmlFor="name">Full Name</Label>
-                                <Input id="name" defaultValue={userProfile.name} />
+                                <Input id="name" value={userProfile.name} onChange={(e) => handleInputChange('name', e.target.value)} />
                             </div>
                             <div className="space-y-2">
                                 <Label htmlFor="email">Email</Label>
-                                <Input id="email" type="email" defaultValue={userProfile.email} />
+                                <Input id="email" type="email" value={userProfile.email} onChange={(e) => handleInputChange('email', e.target.value)} />
                             </div>
                         </div>
 
                          <div className="space-y-2">
                             <Label htmlFor="role">Role</Label>
-                            <Select defaultValue={userProfile.role}>
+                            <Select value={userProfile.role} onValueChange={(value) => handleInputChange('role', value)}>
                                 <SelectTrigger id="role">
                                     <SelectValue placeholder="Select a role" />
                                 </SelectTrigger>
@@ -57,10 +75,10 @@ export default function ProfilePage() {
                         
                         <div className="space-y-2">
                             <Label htmlFor="bio">Bio</Label>
-                            <Textarea id="bio" placeholder="Tell us a little about yourself" className="min-h-[100px]" defaultValue={userProfile.bio} />
+                            <Textarea id="bio" placeholder="Tell us a little about yourself" className="min-h-[100px]" value={userProfile.bio} onChange={(e) => handleInputChange('bio', e.target.value)} />
                         </div>
                         <div className="flex justify-end">
-                            <Button className="bg-accent hover:bg-accent/90 text-accent-foreground">Save Changes</Button>
+                            <Button className="bg-accent hover:bg-accent/90 text-accent-foreground" onClick={handleSaveChanges}>Save Changes</Button>
                         </div>
                     </CardContent>
                 </Card>
