@@ -1,13 +1,12 @@
 
 'use client';
 
-import { AppHeader } from '@/components/AppHeader';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Textarea } from '@/components/ui/textarea';
-import { ArrowUp, CornerUpLeft, MessageCircle, Tag } from 'lucide-react';
+import { ArrowLeft, ArrowUp, CornerUpLeft, MessageCircle, Tag } from 'lucide-react';
 import { useParams } from 'next/navigation';
 import { useState, useEffect } from 'react';
 import { doc, getDoc, collection, addDoc, getDocs, updateDoc, increment, onSnapshot, query, orderBy } from 'firebase/firestore';
@@ -15,6 +14,7 @@ import { db } from '@/lib/firebase';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 import { PageWrapper } from '@/components/PageWrapper';
+import Link from 'next/link';
 
 interface ForumThread {
     id: string;
@@ -124,6 +124,14 @@ export default function ForumThreadPage() {
         <PageWrapper title="Forum Post">
             <main className="flex-1 overflow-y-auto p-4 md:p-6 lg:p-8">
                 <div className="max-w-4xl mx-auto">
+                    <div className="mb-4">
+                        <Button asChild variant="outline">
+                            <Link href="/forums">
+                                <ArrowLeft className="mr-2 h-4 w-4" />
+                                Back to Forums
+                            </Link>
+                        </Button>
+                    </div>
                     {/* Original Post */}
                     <Card className="mb-6">
                         <CardHeader>
