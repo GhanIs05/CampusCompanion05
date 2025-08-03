@@ -1,10 +1,7 @@
 import type { Metadata } from 'next';
 import { Toaster } from '@/components/ui/toaster';
-import { Sidebar, SidebarContent, SidebarHeader, SidebarInset, SidebarProvider } from '@/components/ui/sidebar';
-import { SidebarNav } from '@/components/SidebarNav';
-import { Flame } from 'lucide-react';
-import './globals.css';
 import { AuthProvider } from '@/contexts/AuthContext';
+import './globals.css';
 
 export const metadata: Metadata = {
   title: 'CampusConnect',
@@ -25,22 +22,7 @@ export default function RootLayout({
       </head>
       <body className="font-body antialiased">
         <AuthProvider>
-          <SidebarProvider>
-            <Sidebar>
-              <SidebarHeader>
-                <div className="flex items-center gap-2 p-2">
-                  <Flame className="w-6 h-6 text-primary" />
-                  <h1 className="text-xl font-headline font-semibold">CampusConnect</h1>
-                </div>
-              </SidebarHeader>
-              <SidebarContent>
-                <SidebarNav />
-              </SidebarContent>
-            </Sidebar>
-            <SidebarInset>
-              {children}
-            </SidebarInset>
-          </SidebarProvider>
+          {children}
         </AuthProvider>
         <Toaster />
       </body>

@@ -14,6 +14,7 @@ import { doc, getDoc, collection, addDoc, getDocs, updateDoc, increment } from '
 import { db } from '@/lib/firebase';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
+import { PageWrapper } from '@/components/PageWrapper';
 
 interface ForumThread {
     id: string;
@@ -95,29 +96,26 @@ export default function ForumThreadPage() {
 
     if (loading) {
         return (
-            <div className="flex flex-col h-full">
-                <AppHeader title="Forum Post" />
+            <PageWrapper title="Forum Post">
                 <main className="flex-1 flex items-center justify-center text-muted-foreground">
                     Loading...
                 </main>
-            </div>
+            </PageWrapper>
         )
     }
 
     if (!thread) {
         return (
-            <div className="flex flex-col h-full">
-                <AppHeader title="Forum Post" />
+            <PageWrapper title="Forum Post">
                 <main className="flex-1 flex items-center justify-center text-muted-foreground">
                     Thread not found.
                 </main>
-            </div>
+            </PageWrapper>
         );
     }
 
     return (
-        <div className="flex flex-col h-full">
-            <AppHeader title="Forum Post" />
+        <PageWrapper title="Forum Post">
             <main className="flex-1 overflow-y-auto p-4 md:p-6 lg:p-8">
                 <div className="max-w-4xl mx-auto">
                     {/* Original Post */}
@@ -203,6 +201,6 @@ export default function ForumThreadPage() {
                     </Card>
                 </div>
             </main>
-        </div>
+        </PageWrapper>
     );
 }

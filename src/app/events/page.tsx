@@ -5,11 +5,11 @@ import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Calendar } from '@/components/ui/calendar';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
-import { AppHeader } from '@/components/AppHeader';
 import { events } from '@/lib/data';
 import { CheckCircle, Clock, PartyPopper } from 'lucide-react';
 import { format, isFuture, isSameDay } from 'date-fns';
 import Link from 'next/link';
+import { PageWrapper } from '@/components/PageWrapper';
 
 export default function EventsPage() {
   const [date, setDate] = useState<Date | undefined>();
@@ -26,8 +26,7 @@ export default function EventsPage() {
     : events.filter(event => isFuture(event.date) || isSameDay(event.date, new Date()));
 
   return (
-    <div className="flex flex-col h-full">
-      <AppHeader title="Events" />
+    <PageWrapper title="Events">
       <main className="flex-1 overflow-y-auto p-4 md:p-6 lg:p-8">
         <div className="grid gap-8 md:grid-cols-2 lg:grid-cols-3">
           <div className="lg:col-span-1">
@@ -91,6 +90,6 @@ export default function EventsPage() {
           </div>
         </div>
       </main>
-    </div>
+    </PageWrapper>
   );
 }

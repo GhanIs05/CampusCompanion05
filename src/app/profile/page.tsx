@@ -1,7 +1,6 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { AppHeader } from "@/components/AppHeader";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -13,7 +12,7 @@ import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
-import { useRouter } from 'next/navigation';
+import { PageWrapper } from '@/components/PageWrapper';
 
 export default function ProfilePage() {
     const { user, loading } = useAuth();
@@ -25,12 +24,8 @@ export default function ProfilePage() {
         avatar: '',
     });
     const { toast } = useToast();
-    const router = useRouter();
     
     useEffect(() => {
-        if (!loading && !user) {
-            router.push('/login');
-        }
         if (user) {
             const fetchProfile = async () => {
                 const docRef = doc(db, "users", user.uid);
@@ -49,7 +44,7 @@ export default function ProfilePage() {
             };
             fetchProfile();
         }
-    }, [user, loading, router]);
+    }, [user]);
 
 
     const handleInputChange = (field: string, value: string) => {
@@ -74,13 +69,8 @@ export default function ProfilePage() {
         }
     };
     
-    if (loading || !user) {
-        return <div>Loading...</div>
-    }
-
     return (
-        <div className="flex flex-col h-full">
-            <AppHeader title="My Profile" />
+        <PageWrapper title="My Profile">
             <main className="flex-1 overflow-y-auto p-4 md:p-6 lg:p-8 flex justify-center items-start">
                 <Card className="w-full max-w-2xl">
                     <CardHeader>
@@ -134,6 +124,6 @@ export default function ProfilePage() {
                     </CardContent>
                 </Card>
             </main>
-        </div>
+        </PageWrapper>
     );
 }

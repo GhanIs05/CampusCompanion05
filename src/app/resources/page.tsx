@@ -6,6 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { resourceLibrary } from '@/lib/data';
 import { Download, FileText, Search, Upload } from 'lucide-react';
+import { PageWrapper } from '@/components/PageWrapper';
 
 export default function ResourcesPage() {
   const getFileIcon = (fileType: string) => {
@@ -14,8 +15,7 @@ export default function ResourcesPage() {
   };
 
   return (
-    <div className="flex flex-col h-full">
-      <AppHeader title="Resource Library" />
+    <PageWrapper title="Resource Library">
       <main className="flex-1 overflow-y-auto p-4 md:p-6 lg:p-8">
         <Card>
           <CardHeader>
@@ -73,6 +73,6 @@ export default function ResourcesPage() {
           </CardContent>
         </Card>
       </main>
-    </div>
+    </PageWrapper>
   );
 }

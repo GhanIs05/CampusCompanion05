@@ -1,7 +1,6 @@
 
 'use client';
 
-import { AppHeader } from '@/components/AppHeader';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
@@ -17,6 +16,7 @@ import Link from 'next/link';
 import { collection, addDoc, getDocs, doc, updateDoc, increment } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { useAuth } from '@/contexts/AuthContext';
+import { PageWrapper } from '@/components/PageWrapper';
 
 interface ForumThread {
     id: string;
@@ -128,8 +128,7 @@ export default function ForumsPage() {
   const courses = [...new Set(threads.map(r => r.course))];
 
   return (
-    <div className="flex flex-col h-full">
-      <AppHeader title="Forums" />
+    <PageWrapper title="Forums">
       <main className="flex-1 overflow-y-auto p-4 md:p-6 lg:p-8">
         <div className="flex flex-col md:flex-row items-center justify-between gap-4 mb-6">
           <div className="relative w-full md:max-w-sm">
@@ -222,6 +221,6 @@ export default function ForumsPage() {
           ))}
         </div>
       </main>
-    </div>
+    </PageWrapper>
   );
 }

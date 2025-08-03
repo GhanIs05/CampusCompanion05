@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -10,13 +10,21 @@ import Link from 'next/link';
 import { Flame } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useRouter } from 'next/navigation';
+import { PageWrapper } from '@/components/PageWrapper';
 
 export default function LoginPage() {
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const { toast } = useToast();
-    const { login } = useAuth();
+    const { login, user, loading } = useAuth();
     const router = useRouter();
+
+    useEffect(() => {
+        if (!loading && user) {
+            router.push('/');
+        }
+    }, [user, loading, router]);
+
 
     const handleLogin = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -43,9 +51,13 @@ export default function LoginPage() {
             });
         }
     };
+    
+    if (loading || user) {
+        return <div className="flex min-h-screen items-center justify-center bg-background">Loading...</div>;
+    }
 
     return (
-        <div className="flex min-h-screen items-center justify-center bg-background p-4">
+        <PageWrapper title="" isPublic>
              <div className="absolute top-8 flex items-center gap-2">
                 <Flame className="w-8 h-8 text-primary" />
                 <h1 className="text-2xl font-headline font-semibold">CampusConnect</h1>
@@ -79,6 +91,6 @@ export default function LoginPage() {
                     </CardFooter>
                 </form>
             </Card>
-        </div>
+        </PageWrapper>
     );
 }

@@ -10,6 +10,7 @@ import { Calendar, CheckCircle, Clock, MapPin, Tag } from 'lucide-react';
 import { useParams } from 'next/navigation';
 import { format } from 'date-fns';
 import Image from 'next/image';
+import { PageWrapper } from '@/components/PageWrapper';
 
 export default function EventDetailPage() {
     const params = useParams();
@@ -19,18 +20,16 @@ export default function EventDetailPage() {
 
     if (!event) {
         return (
-            <div className="flex flex-col h-full">
-                <AppHeader title="Event Details" />
+            <PageWrapper title="Event Details">
                 <main className="flex-1 flex items-center justify-center text-muted-foreground">
                     Event not found.
                 </main>
-            </div>
+            </PageWrapper>
         );
     }
 
     return (
-        <div className="flex flex-col h-full">
-            <AppHeader title="Event Details" />
+        <PageWrapper title="Event Details">
             <main className="flex-1 overflow-y-auto p-4 md:p-6 lg:p-8">
                 <div className="max-w-4xl mx-auto">
                     <Card>
@@ -83,7 +82,7 @@ export default function EventDetailPage() {
                     </Card>
                 </div>
             </main>
-        </div>
+        </PageWrapper>
     );
 }
 
