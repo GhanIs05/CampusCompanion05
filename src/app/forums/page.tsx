@@ -1,12 +1,84 @@
+
+'use client';
+
 import { AppHeader } from '@/components/AppHeader';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
-import { forumThreads } from '@/lib/data';
-import { ArrowUp, MessageCircle, Search, Tag } from 'lucide-react';
+import { forumThreads as initialForumThreads, resourceLibrary } from '@/lib/data';
+import { ArrowUp, MessageCircle, Search, Tag, PlusCircle } from 'lucide-react';
+import { useState } from 'react';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { useToast } from '@/hooks/use-toast';
 
 export default function ForumsPage() {
+  const [searchTerm, setSearchTerm] = useState('');
+  const [threads, setThreads] = useState(initialForumThreads);
+  const [open, setOpen] = useState(false);
+  const { toast } = useToast();
+
+  const [newPost, setNewPost] = useState({
+    title: '',
+    course: '',
+    tags: '',
+    body: '',
+  });
+
+  const handleInputChange = (field: string, value: string) => {
+    setNewPost((prev) => ({ ...prev, [field]: value }));
+  };
+
+  const handleCreatePost = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newPost.title || !newPost.course || !newPost.body) {
+        toast({
+            variant: "destructive",
+            title: "Missing Fields",
+            description: "Please fill out all required fields.",
+        });
+        return;
+    }
+
+    const newThread = {
+      id: `thread-${threads.length + 1}-${Date.now()}`,
+      title: newPost.title,
+      author: 'Campus User',
+      course: newPost.course,
+      upvotes: 0,
+      replies: 0,
+      timestamp: 'Just now',
+      tags: newPost.tags.split(',').map(tag => tag.trim()).filter(Boolean),
+    };
+
+    setThreads([newThread, ...threads]);
+    setOpen(false);
+    setNewPost({ title: '', course: '', tags: '', body: '' }); // Reset form
+     toast({
+        title: "Post Created",
+        description: "Your new forum post has been successfully created.",
+    });
+  };
+  
+  const handleUpvote = (threadId: string) => {
+    setThreads(threads.map(thread => 
+      thread.id === threadId 
+        ? { ...thread, upvotes: thread.upvotes + 1 }
+        : thread
+    ));
+  };
+
+  const filteredThreads = threads.filter(thread =>
+    thread.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    thread.course.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    thread.tags.some(tag => tag.toLowerCase().includes(searchTerm.toLowerCase()))
+  );
+
+  const courses = [...new Set(resourceLibrary.map(r => r.category))];
+
   return (
     <div className="flex flex-col h-full">
       <AppHeader title="Forums" />
@@ -14,15 +86,63 @@ export default function ForumsPage() {
         <div className="flex flex-col md:flex-row items-center justify-between gap-4 mb-6">
           <div className="relative w-full md:max-w-sm">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
-            <Input placeholder="Search forums..." className="pl-10" />
+            <Input 
+              placeholder="Search forums..." 
+              className="pl-10" 
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+            />
           </div>
-          <Button className="w-full md:w-auto bg-accent hover:bg-accent/90 text-accent-foreground">
-            Create New Post
-          </Button>
+          <Dialog open={open} onOpenChange={setOpen}>
+            <DialogTrigger asChild>
+              <Button className="w-full md:w-auto bg-accent hover:bg-accent/90 text-accent-foreground">
+                <PlusCircle className="mr-2 h-4 w-4" />
+                Create New Post
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="sm:max-w-[425px]">
+              <form onSubmit={handleCreatePost}>
+                <DialogHeader>
+                  <DialogTitle className="font-headline">Create New Post</DialogTitle>
+                  <DialogDescription>
+                    Share your thoughts, ask questions, or start a discussion.
+                  </DialogDescription>
+                </DialogHeader>
+                <div className="grid gap-4 py-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="title">Title</Label>
+                    <Input id="title" value={newPost.title} onChange={(e) => handleInputChange('title', e.target.value)} placeholder="e.g., Struggling with Quantum Mechanics..." />
+                  </div>
+                   <div className="space-y-2">
+                    <Label htmlFor="course">Course</Label>
+                     <Select value={newPost.course} onValueChange={(value) => handleInputChange('course', value)}>
+                        <SelectTrigger id="course">
+                            <SelectValue placeholder="Select a course" />
+                        </SelectTrigger>
+                        <SelectContent>
+                            {courses.map(course => <SelectItem key={course} value={course}>{course}</SelectItem>)}
+                        </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="tags">Tags</Label>
+                    <Input id="tags" value={newPost.tags} onChange={(e) => handleInputChange('tags', e.target.value)} placeholder="e.g., homework-help, quantum (comma-separated)" />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="body">Body</Label>
+                    <Textarea id="body" value={newPost.body} onChange={(e) => handleInputChange('body', e.target.value)} placeholder="Elaborate on your post..." className="min-h-[120px]" />
+                  </div>
+                </div>
+                <DialogFooter>
+                  <Button type="submit" className="bg-accent hover:bg-accent/90 text-accent-foreground">Create Post</Button>
+                </DialogFooter>
+              </form>
+            </DialogContent>
+          </Dialog>
         </div>
 
         <div className="space-y-4">
-          {forumThreads.map((thread) => (
+          {filteredThreads.map((thread) => (
             <Card key={thread.id}>
               <CardHeader>
                 <CardTitle className="font-headline text-lg">{thread.title}</CardTitle>
@@ -39,10 +159,10 @@ export default function ForumsPage() {
                 </div>
               </CardContent>
               <CardFooter className="flex items-center gap-6">
-                <div className="flex items-center gap-2 text-muted-foreground">
-                  <ArrowUp className="h-5 w-5" />
+                <Button variant="ghost" size="sm" onClick={() => handleUpvote(thread.id)}>
+                  <ArrowUp className="h-5 w-5 mr-2" />
                   <span>{thread.upvotes} Upvotes</span>
-                </div>
+                </Button>
                 <div className="flex items-center gap-2 text-muted-foreground">
                   <MessageCircle className="h-5 w-5" />
                   <span>{thread.replies} Replies</span>
@@ -55,3 +175,5 @@ export default function ForumsPage() {
     </div>
   );
 }
+
+    
