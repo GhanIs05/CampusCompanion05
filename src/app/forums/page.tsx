@@ -18,6 +18,7 @@ import { db } from '@/lib/firebase';
 import { useAuth } from '@/contexts/AuthContext';
 import { PageWrapper } from '@/components/PageWrapper';
 import { forumThreads as sampleForumThreads } from '@/lib/data';
+import { Switch } from '@/components/ui/switch';
 
 interface ForumThread {
     id: string;
@@ -37,6 +38,7 @@ export default function ForumsPage() {
   const [threads, setThreads] = useState<ForumThread[]>([]);
   const [loading, setLoading] = useState(true);
   const [open, setOpen] = useState(false);
+  const [showMyPostsOnly, setShowMyPostsOnly] = useState(false);
   const { toast } = useToast();
   const { user } = useAuth();
 
@@ -141,11 +143,15 @@ export default function ForumsPage() {
     ));
   };
 
-  const filteredThreads = threads.filter(thread =>
-    thread.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    thread.course.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    thread.tags.some(tag => tag.toLowerCase().includes(searchTerm.toLowerCase()))
-  );
+  const filteredThreads = threads.filter(thread => {
+    const matchesSearch = thread.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        thread.course.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        thread.tags.some(tag => tag.toLowerCase().includes(searchTerm.toLowerCase()));
+
+    const matchesAuthor = !showMyPostsOnly || (user && thread.author === user.displayName);
+
+    return matchesSearch && matchesAuthor;
+  });
   
   const courses = [...new Set(threads.map(r => r.course).concat(sampleForumThreads.map(r => r.course)))];
 
@@ -163,18 +169,27 @@ export default function ForumsPage() {
     <PageWrapper title="Forums">
       <main className="flex-1 overflow-y-auto p-4 md:p-6 lg:p-8">
         <div className="flex flex-col md:flex-row items-center justify-between gap-4 mb-6">
-          <div className="relative w-full md:max-w-sm">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
-            <Input 
-              placeholder="Search forums..." 
-              className="pl-10" 
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-            />
-          </div>
+            <div className="flex w-full flex-col md:flex-row gap-4 md:items-center">
+                <div className="relative w-full md:max-w-sm">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
+                    <Input 
+                    placeholder="Search forums..." 
+                    className="pl-10" 
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    />
+                </div>
+                {user && (
+                    <div className="flex items-center space-x-2">
+                        <Switch id="my-posts-filter" checked={showMyPostsOnly} onCheckedChange={setShowMyPostsOnly} />
+                        <Label htmlFor="my-posts-filter">My Posts</Label>
+                    </div>
+                )}
+            </div>
+          
           <Dialog open={open} onOpenChange={setOpen}>
             <DialogTrigger asChild>
-              <Button className="w-full md:w-auto bg-accent hover:bg-accent/90 text-accent-foreground">
+              <Button className="w-full md:w-auto bg-accent hover:bg-accent/90 text-accent-foreground flex-shrink-0">
                 <PlusCircle className="mr-2 h-4 w-4" />
                 Create New Post
               </Button>
