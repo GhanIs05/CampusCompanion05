@@ -10,8 +10,9 @@ import { Textarea } from '@/components/ui/textarea';
 import { forumThreads } from '@/lib/data';
 import { ArrowUp, CornerUpLeft, MessageCircle, Tag } from 'lucide-react';
 import { useParams } from 'next/navigation';
+import { useState } from 'react';
 
-const threadReplies = [
+const initialThreadReplies = [
     { id: 'r1', author: 'Bob Williams', avatar: 'https://placehold.co/100x100.png', timestamp: '1 hour ago', content: 'I found that watching some videos on Khan Academy really helped clarify the concepts. Maybe give that a try?' },
     { id: 'r2', author: 'Charlie Brown', avatar: 'https://placehold.co/100x100.png', timestamp: '45 minutes ago', content: 'Seconding Bob\'s suggestion. Also, the textbook has some great worked examples in chapter 5 that are directly related to the problem set.' },
 ];
@@ -19,6 +20,9 @@ const threadReplies = [
 export default function ForumThreadPage() {
     const params = useParams();
     const threadId = params.id as string;
+    
+    const [replies, setReplies] = useState(initialThreadReplies);
+    const [replyContent, setReplyContent] = useState('');
 
     const thread = forumThreads.find(t => t.id === threadId);
 
@@ -32,6 +36,20 @@ export default function ForumThreadPage() {
             </div>
         );
     }
+    
+    const handlePostReply = () => {
+        if (replyContent.trim()) {
+            const newReply = {
+                id: `r${replies.length + 1}-${Date.now()}`,
+                author: 'Campus User',
+                avatar: 'https://placehold.co/100x100.png',
+                timestamp: 'Just now',
+                content: replyContent,
+            };
+            setReplies([...replies, newReply]);
+            setReplyContent('');
+        }
+    };
 
     return (
         <div className="flex flex-col h-full">
@@ -72,15 +90,15 @@ export default function ForumThreadPage() {
                             </Button>
                             <div className="flex items-center gap-2 text-muted-foreground">
                                 <MessageCircle className="h-5 w-5" />
-                                <span>{thread.replies} Replies</span>
+                                <span>{replies.length} Replies</span>
                             </div>
                         </CardFooter>
                     </Card>
 
                     {/* Replies */}
-                    <h2 className="text-xl font-headline font-semibold mb-4">{thread.replies} Replies</h2>
+                    <h2 className="text-xl font-headline font-semibold mb-4">{replies.length} Replies</h2>
                     <div className="space-y-4">
-                        {threadReplies.map(reply => (
+                        {replies.map(reply => (
                             <Card key={reply.id} className="bg-muted/50">
                                 <CardHeader className="pb-3">
                                     <div className="flex items-center gap-3">
@@ -107,10 +125,15 @@ export default function ForumThreadPage() {
                             <CardTitle className="font-headline">Leave a Reply</CardTitle>
                         </CardHeader>
                         <CardContent>
-                            <Textarea placeholder="Write your reply here..." className="min-h-[120px]" />
+                            <Textarea 
+                                placeholder="Write your reply here..." 
+                                className="min-h-[120px]"
+                                value={replyContent}
+                                onChange={(e) => setReplyContent(e.target.value)}
+                            />
                         </CardContent>
                         <CardFooter>
-                            <Button className="bg-accent hover:bg-accent/90 text-accent-foreground">
+                            <Button className="bg-accent hover:bg-accent/90 text-accent-foreground" onClick={handlePostReply}>
                                 <CornerUpLeft className="mr-2 h-4 w-4" />
                                 Post Reply
                             </Button>
