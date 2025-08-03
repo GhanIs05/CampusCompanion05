@@ -8,14 +8,15 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { resourceLibrary as sampleResourceLibrary } from '@/lib/data';
-import { Download, FileText, Search, Upload, PlusCircle } from 'lucide-react';
+import { Download, FileText, Search, Upload, PlusCircle, Loader2 } from 'lucide-react';
 import { PageWrapper } from '@/components/PageWrapper';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { collection, addDoc, getDocs, writeBatch, doc } from 'firebase/firestore';
-import { db } from '@/lib/firebase';
+import { db, storage } from '@/lib/firebase';
+import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import { format } from 'date-fns';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
@@ -33,6 +34,7 @@ interface Resource {
 export default function ResourcesPage() {
     const [resources, setResources] = useState<Resource[]>([]);
     const [loading, setLoading] = useState(true);
+    const [uploading, setUploading] = useState(false);
     const [searchTerm, setSearchTerm] = useState('');
     const [open, setOpen] = useState(false);
     const { user } = useAuth();
@@ -41,8 +43,8 @@ export default function ResourcesPage() {
     const [newResource, setNewResource] = useState({
         name: '',
         category: '',
-        url: '',
     });
+    const [fileToUpload, setFileToUpload] = useState<File | null>(null);
 
     const seedDatabase = async () => {
         const batch = writeBatch(db);
@@ -51,7 +53,7 @@ export default function ResourcesPage() {
             const resourceRef = doc(collection(db, "resources"));
             const dataWithUrl = {
                 ...resourceData,
-                url: 'https://example.com/download/sample.pdf', // Placeholder URL
+                url: 'https://firebasestorage.googleapis.com/v0/b/campusconnect-ee87d.appspot.com/o/resources%2Fsample.pdf?alt=media&token=1d74e2a8-1b29-41d4-8398-3499426f4977', // Placeholder URL
                 date: new Date().toISOString(),
             }
             batch.set(resourceRef, dataWithUrl);
@@ -82,13 +84,19 @@ export default function ResourcesPage() {
         setNewResource((prev) => ({ ...prev, [field]: value }));
     };
 
+    const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        if (e.target.files && e.target.files[0]) {
+            setFileToUpload(e.target.files[0]);
+        }
+    }
+
     const handleUploadResource = async (e: React.FormEvent) => {
         e.preventDefault();
-        if (!newResource.name || !newResource.category || !newResource.url) {
+        if (!newResource.name || !newResource.category || !fileToUpload) {
             toast({
                 variant: "destructive",
                 title: "Missing Fields",
-                description: "Please fill out all fields.",
+                description: "Please fill out all fields and select a file.",
             });
             return;
         }
@@ -96,27 +104,38 @@ export default function ResourcesPage() {
             toast({ variant: "destructive", title: "Not logged in", description: "You must be logged in to upload a resource."});
             return;
         }
-
-        const resourceData = {
-          name: newResource.name,
-          category: newResource.category,
-          uploader: user.displayName || 'Campus User',
-          date: new Date().toISOString(),
-          fileType: 'pdf', // Assuming pdf for now
-          url: newResource.url,
-        };
+        
+        setUploading(true);
 
         try {
+            const storageRef = ref(storage, `resources/${Date.now()}_${fileToUpload.name}`);
+            const uploadResult = await uploadBytes(storageRef, fileToUpload);
+            const downloadURL = await getDownloadURL(uploadResult.ref);
+
+            const resourceData = {
+              name: newResource.name,
+              category: newResource.category,
+              uploader: user.displayName || 'Campus User',
+              date: new Date().toISOString(),
+              fileType: fileToUpload.type,
+              url: downloadURL,
+            };
+
             await addDoc(collection(db, "resources"), resourceData);
+            
             setOpen(false);
-            setNewResource({ name: '', category: '', url: '' }); // Reset form
+            setNewResource({ name: '', category: ''}); // Reset form
+            setFileToUpload(null);
+
             toast({
                 title: "Resource Uploaded",
                 description: "Your resource has been added to the library.",
             });
             fetchResources(); // Refresh resources
         } catch(error: any) {
-            toast({ variant: "destructive", title: "Error", description: error.message});
+            toast({ variant: "destructive", title: "Upload Error", description: error.message});
+        } finally {
+            setUploading(false);
         }
     }
 
@@ -137,7 +156,6 @@ export default function ResourcesPage() {
     );
 
     const getFileIcon = (fileType: string) => {
-        // In a real app, you'd have more icons for different file types
         return <FileText className="h-5 w-5 text-primary" />;
     };
     
@@ -193,14 +211,23 @@ export default function ResourcesPage() {
                                         </Select>
                                     </div>
                                     <div className="space-y-2">
-                                        <Label htmlFor="url">Download URL</Label>
-                                        <Input id="url" value={newResource.url} onChange={(e) => handleInputChange('url', e.target.value)} placeholder="https://example.com/file.pdf" />
+                                        <Label htmlFor="file">Document</Label>
+                                        <Input id="file" type="file" onChange={handleFileChange} />
                                     </div>
                                 </div>
                                 <DialogFooter>
-                                <Button type="submit" className="bg-accent hover:bg-accent/90 text-accent-foreground">
-                                    <PlusCircle className="mr-2 h-4 w-4" />
-                                    Add Resource
+                                <Button type="submit" className="bg-accent hover:bg-accent/90 text-accent-foreground" disabled={uploading}>
+                                    {uploading ? (
+                                        <>
+                                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                            Uploading...
+                                        </>
+                                    ) : (
+                                        <>
+                                            <PlusCircle className="mr-2 h-4 w-4" />
+                                            Add Resource
+                                        </>
+                                    )}
                                 </Button>
                                 </DialogFooter>
                             </form>
@@ -262,4 +289,3 @@ export default function ResourcesPage() {
         </PageWrapper>
     );
 }
-
