@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { AppHeader } from "@/components/AppHeader";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
@@ -9,23 +9,74 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import { userProfile as initialUserProfile } from "@/lib/data";
 import { useToast } from '@/hooks/use-toast';
+import { useAuth } from '@/contexts/AuthContext';
+import { doc, getDoc, setDoc } from 'firebase/firestore';
+import { db } from '@/lib/firebase';
+import { useRouter } from 'next/navigation';
 
 export default function ProfilePage() {
-    const [userProfile, setUserProfile] = useState(initialUserProfile);
+    const { user, loading } = useAuth();
+    const [userProfile, setUserProfile] = useState({
+        name: '',
+        email: '',
+        role: '',
+        bio: '',
+        avatar: '',
+    });
     const { toast } = useToast();
+    const router = useRouter();
+    
+    useEffect(() => {
+        if (!loading && !user) {
+            router.push('/login');
+        }
+        if (user) {
+            const fetchProfile = async () => {
+                const docRef = doc(db, "users", user.uid);
+                const docSnap = await getDoc(docRef);
+
+                if (docSnap.exists()) {
+                    setUserProfile(docSnap.data() as any);
+                } else {
+                    setUserProfile(prev => ({
+                        ...prev,
+                        name: user.displayName || '',
+                        email: user.email || '',
+                        avatar: user.photoURL || 'https://placehold.co/100x100.png',
+                    }))
+                }
+            };
+            fetchProfile();
+        }
+    }, [user, loading, router]);
+
 
     const handleInputChange = (field: string, value: string) => {
         setUserProfile((prev) => ({ ...prev, [field]: value }));
     };
 
-    const handleSaveChanges = () => {
-        toast({
-            title: "Profile Updated",
-            description: "Your profile information has been saved.",
-        });
+    const handleSaveChanges = async () => {
+        if (user) {
+            try {
+                await setDoc(doc(db, "users", user.uid), userProfile, { merge: true });
+                toast({
+                    title: "Profile Updated",
+                    description: "Your profile information has been saved.",
+                });
+            } catch (error: any) {
+                toast({
+                    variant: "destructive",
+                    title: "Update Failed",
+                    description: error.message,
+                });
+            }
+        }
     };
+    
+    if (loading || !user) {
+        return <div>Loading...</div>
+    }
 
     return (
         <div className="flex flex-col h-full">
@@ -40,7 +91,7 @@ export default function ProfilePage() {
                         <div className="flex items-center gap-6">
                             <Avatar className="h-20 w-20">
                                 <AvatarImage src={userProfile.avatar} data-ai-hint="profile avatar" />
-                                <AvatarFallback>CU</AvatarFallback>
+                                <AvatarFallback>{userProfile.name?.charAt(0) || 'U'}</AvatarFallback>
                             </Avatar>
                             <div className="flex flex-col gap-2">
                                 <Button>Upload new photo</Button>
@@ -55,7 +106,7 @@ export default function ProfilePage() {
                             </div>
                             <div className="space-y-2">
                                 <Label htmlFor="email">Email</Label>
-                                <Input id="email" type="email" value={userProfile.email} onChange={(e) => handleInputChange('email', e.target.value)} />
+                                <Input id="email" type="email" value={userProfile.email} onChange={(e) => handleInputChange('email', e.target.value)} disabled />
                             </div>
                         </div>
 

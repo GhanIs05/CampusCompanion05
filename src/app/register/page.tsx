@@ -8,6 +8,8 @@ import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import Link from 'next/link';
 import { Flame } from 'lucide-react';
+import { useAuth } from '@/contexts/AuthContext';
+import { useRouter } from 'next/navigation';
 
 export default function RegisterPage() {
     const [name, setName] = useState('');
@@ -15,8 +17,10 @@ export default function RegisterPage() {
     const [password, setPassword] = useState('');
     const [confirmPassword, setConfirmPassword] = useState('');
     const { toast } = useToast();
+    const { register } = useAuth();
+    const router = useRouter();
 
-    const handleRegister = (e: React.FormEvent) => {
+    const handleRegister = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!name || !email || !password || !confirmPassword) {
             toast({
@@ -34,11 +38,20 @@ export default function RegisterPage() {
             });
             return;
         }
-        toast({
-            title: 'Registration Successful',
-            description: 'You can now log in with your new account.',
-        });
-        // In a real app, you would handle user creation and redirect
+        try {
+            await register(email, password, name);
+            toast({
+                title: 'Registration Successful',
+                description: 'You can now log in with your new account.',
+            });
+            router.push('/login');
+        } catch (error: any) {
+            toast({
+                variant: 'destructive',
+                title: 'Registration Failed',
+                description: error.message,
+            });
+        }
     };
 
     return (

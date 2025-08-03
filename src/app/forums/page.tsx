@@ -6,21 +6,37 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
-import { forumThreads as initialForumThreads, resourceLibrary } from '@/lib/data';
 import { ArrowUp, MessageCircle, Search, Tag, PlusCircle } from 'lucide-react';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
 import Link from 'next/link';
+import { collection, addDoc, getDocs, doc, updateDoc, increment } from 'firebase/firestore';
+import { db } from '@/lib/firebase';
+import { useAuth } from '@/contexts/AuthContext';
+
+interface ForumThread {
+    id: string;
+    title: string;
+    author: string;
+    course: string;
+    upvotes: number;
+    replies: number;
+    timestamp: string;
+    tags: string[];
+    body: string;
+}
+
 
 export default function ForumsPage() {
   const [searchTerm, setSearchTerm] = useState('');
-  const [threads, setThreads] = useState(initialForumThreads);
+  const [threads, setThreads] = useState<ForumThread[]>([]);
   const [open, setOpen] = useState(false);
   const { toast } = useToast();
+  const { user } = useAuth();
 
   const [newPost, setNewPost] = useState({
     title: '',
@@ -29,11 +45,22 @@ export default function ForumsPage() {
     body: '',
   });
 
+  const fetchThreads = async () => {
+      const querySnapshot = await getDocs(collection(db, "forumThreads"));
+      const threadsData = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as ForumThread));
+      setThreads(threadsData);
+  }
+
+  useEffect(() => {
+    fetchThreads();
+  }, [])
+
+
   const handleInputChange = (field: string, value: string) => {
     setNewPost((prev) => ({ ...prev, [field]: value }));
   };
 
-  const handleCreatePost = (e: React.FormEvent) => {
+  const handleCreatePost = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newPost.title || !newPost.course || !newPost.body) {
         toast({
@@ -43,30 +70,48 @@ export default function ForumsPage() {
         });
         return;
     }
+    if (!user) {
+        toast({ variant: "destructive", title: "Not logged in", description: "You must be logged in to create a post."});
+        return;
+    }
 
     const newThread = {
-      id: `thread-${threads.length + 1}-${Date.now()}`,
       title: newPost.title,
-      author: 'Campus User',
+      author: user.displayName || 'Campus User',
       course: newPost.course,
       upvotes: 0,
       replies: 0,
-      timestamp: 'Just now',
+      timestamp: new Date().toISOString(),
       tags: newPost.tags.split(',').map(tag => tag.trim()).filter(Boolean),
+      body: newPost.body,
     };
 
-    setThreads([newThread, ...threads]);
-    setOpen(false);
-    setNewPost({ title: '', course: '', tags: '', body: '' }); // Reset form
-     toast({
-        title: "Post Created",
-        description: "Your new forum post has been successfully created.",
-    });
+    try {
+        await addDoc(collection(db, "forumThreads"), newThread);
+        setOpen(false);
+        setNewPost({ title: '', course: '', tags: '', body: '' }); // Reset form
+         toast({
+            title: "Post Created",
+            description: "Your new forum post has been successfully created.",
+        });
+        fetchThreads(); // Refresh threads
+    } catch(error: any) {
+        toast({ variant: "destructive", title: "Error", description: error.message});
+    }
+
   };
   
-  const handleUpvote = (e: React.MouseEvent, threadId: string) => {
+  const handleUpvote = async (e: React.MouseEvent, threadId: string) => {
     e.preventDefault();
     e.stopPropagation();
+    if (!user) {
+        toast({ variant: "destructive", title: "Not logged in", description: "You must be logged in to upvote."});
+        return;
+    }
+    const threadRef = doc(db, "forumThreads", threadId);
+    await updateDoc(threadRef, {
+        upvotes: increment(1)
+    });
     setThreads(threads.map(thread => 
       thread.id === threadId 
         ? { ...thread, upvotes: thread.upvotes + 1 }
@@ -80,7 +125,7 @@ export default function ForumsPage() {
     thread.tags.some(tag => tag.toLowerCase().includes(searchTerm.toLowerCase()))
   );
 
-  const courses = [...new Set(resourceLibrary.map(r => r.category))];
+  const courses = [...new Set(threads.map(r => r.course))];
 
   return (
     <div className="flex flex-col h-full">
@@ -151,7 +196,7 @@ export default function ForumsPage() {
                 <CardHeader>
                     <CardTitle className="font-headline text-lg">{thread.title}</CardTitle>
                     <CardDescription>
-                    Posted by {thread.author} in <Badge variant="secondary">{thread.course}</Badge> - {thread.timestamp}
+                    Posted by {thread.author} in <Badge variant="secondary">{thread.course}</Badge> - {new Date(thread.timestamp).toLocaleString()}
                     </CardDescription>
                 </CardHeader>
                 <CardContent>

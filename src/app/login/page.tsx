@@ -8,13 +8,17 @@ import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import Link from 'next/link';
 import { Flame } from 'lucide-react';
+import { useAuth } from '@/contexts/AuthContext';
+import { useRouter } from 'next/navigation';
 
 export default function LoginPage() {
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const { toast } = useToast();
+    const { login } = useAuth();
+    const router = useRouter();
 
-    const handleLogin = (e: React.FormEvent) => {
+    const handleLogin = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!email || !password) {
             toast({
@@ -24,11 +28,20 @@ export default function LoginPage() {
             });
             return;
         }
-        toast({
-            title: 'Login Successful',
-            description: 'Redirecting to your dashboard...',
-        });
-        // In a real app, you'd redirect here
+        try {
+            await login(email, password);
+            toast({
+                title: 'Login Successful',
+                description: 'Redirecting to your dashboard...',
+            });
+            router.push('/');
+        } catch (error: any) {
+            toast({
+                variant: 'destructive',
+                title: 'Login Failed',
+                description: error.message,
+            });
+        }
     };
 
     return (

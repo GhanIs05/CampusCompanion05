@@ -5,26 +5,104 @@ import { AppHeader } from '@/components/AppHeader';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Textarea } from '@/components/ui/textarea';
-import { forumThreads } from '@/lib/data';
 import { ArrowUp, CornerUpLeft, MessageCircle, Tag } from 'lucide-react';
 import { useParams } from 'next/navigation';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { doc, getDoc, collection, addDoc, getDocs, updateDoc, increment } from 'firebase/firestore';
+import { db } from '@/lib/firebase';
+import { useAuth } from '@/contexts/AuthContext';
+import { useToast } from '@/hooks/use-toast';
 
-const initialThreadReplies = [
-    { id: 'r1', author: 'Bob Williams', avatar: 'https://placehold.co/100x100.png', timestamp: '1 hour ago', content: 'I found that watching some videos on Khan Academy really helped clarify the concepts. Maybe give that a try?' },
-    { id: 'r2', author: 'Charlie Brown', avatar: 'https://placehold.co/100x100.png', timestamp: '45 minutes ago', content: 'Seconding Bob\'s suggestion. Also, the textbook has some great worked examples in chapter 5 that are directly related to the problem set.' },
-];
+interface ForumThread {
+    id: string;
+    title: string;
+    author: string;
+    course: string;
+    upvotes: number;
+    replies: number;
+    timestamp: string;
+    tags: string[];
+    body: string;
+}
+
+interface Reply {
+    id: string;
+    author: string;
+    avatar: string;
+    timestamp: string;
+    content: string;
+}
 
 export default function ForumThreadPage() {
     const params = useParams();
     const threadId = params.id as string;
+    const { user } = useAuth();
+    const { toast } = useToast();
     
-    const [replies, setReplies] = useState(initialThreadReplies);
+    const [thread, setThread] = useState<ForumThread | null>(null);
+    const [replies, setReplies] = useState<Reply[]>([]);
     const [replyContent, setReplyContent] = useState('');
+    const [loading, setLoading] = useState(true);
 
-    const thread = forumThreads.find(t => t.id === threadId);
+    const fetchThreadAndReplies = async () => {
+        setLoading(true);
+        const threadRef = doc(db, "forumThreads", threadId);
+        const threadSnap = await getDoc(threadRef);
+
+        if (threadSnap.exists()) {
+            setThread({ id: threadSnap.id, ...threadSnap.data() } as ForumThread);
+        }
+
+        const repliesRef = collection(db, "forumThreads", threadId, "replies");
+        const repliesSnap = await getDocs(repliesRef);
+        const repliesData = repliesSnap.docs.map(doc => ({ id: doc.id, ...doc.data() } as Reply));
+        setReplies(repliesData);
+        setLoading(false);
+    }
+    
+    useEffect(() => {
+        if(threadId) {
+            fetchThreadAndReplies();
+        }
+    }, [threadId]);
+
+
+    const handlePostReply = async () => {
+        if (replyContent.trim() && user) {
+            const newReply = {
+                author: user.displayName || 'Campus User',
+                avatar: user.photoURL || 'https://placehold.co/100x100.png',
+                timestamp: new Date().toISOString(),
+                content: replyContent,
+            };
+            
+            const repliesRef = collection(db, "forumThreads", threadId, "replies");
+            await addDoc(repliesRef, newReply);
+            
+            const threadRef = doc(db, "forumThreads", threadId);
+            await updateDoc(threadRef, {
+                replies: increment(1)
+            });
+
+            setReplyContent('');
+            fetchThreadAndReplies(); // Refresh replies
+        } else if (!user) {
+            toast({ variant: "destructive", title: "Not logged in", description: "You must be logged in to reply."});
+        }
+    };
+
+    if (loading) {
+        return (
+            <div className="flex flex-col h-full">
+                <AppHeader title="Forum Post" />
+                <main className="flex-1 flex items-center justify-center text-muted-foreground">
+                    Loading...
+                </main>
+            </div>
+        )
+    }
 
     if (!thread) {
         return (
@@ -36,20 +114,6 @@ export default function ForumThreadPage() {
             </div>
         );
     }
-    
-    const handlePostReply = () => {
-        if (replyContent.trim()) {
-            const newReply = {
-                id: `r${replies.length + 1}-${Date.now()}`,
-                author: 'Campus User',
-                avatar: 'https://placehold.co/100x100.png',
-                timestamp: 'Just now',
-                content: replyContent,
-            };
-            setReplies([...replies, newReply]);
-            setReplyContent('');
-        }
-    };
 
     return (
         <div className="flex flex-col h-full">
@@ -69,13 +133,11 @@ export default function ForumThreadPage() {
                                     <span>{thread.author}</span>
                                 </div>
                                 <span>in <Badge variant="secondary">{thread.course}</Badge></span>
-                                <span>{thread.timestamp}</span>
+                                <span>{new Date(thread.timestamp).toLocaleString()}</span>
                             </div>
                         </CardHeader>
                         <CardContent>
-                            <p className="text-base">
-                                I've been stuck on question 3 of the latest quantum mechanics problem set for hours. I understand the basic principles of wave-particle duality but I can't seem to apply it to this specific scenario. Has anyone else made progress or have any tips?
-                            </p>
+                            <p className="text-base">{thread.body}</p>
                             <div className="flex items-center gap-2 flex-wrap mt-6">
                                 <Tag className="h-4 w-4 text-muted-foreground" />
                                 {thread.tags.map((tag) => (
@@ -108,7 +170,7 @@ export default function ForumThreadPage() {
                                         </Avatar>
                                         <div>
                                             <p className="font-semibold">{reply.author}</p>
-                                            <p className="text-xs text-muted-foreground">{reply.timestamp}</p>
+                                            <p className="text-xs text-muted-foreground">{new Date(reply.timestamp).toLocaleString()}</p>
                                         </div>
                                     </div>
                                 </CardHeader>
