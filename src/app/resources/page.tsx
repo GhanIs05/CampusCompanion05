@@ -108,11 +108,9 @@ export default function ResourcesPage() {
         setUploading(true);
 
         try {
-            const storageRef = ref(storage, `resources/${Date.now()}_${fileToUpload.name}`);
-            const uploadResult = await uploadBytes(storageRef, fileToUpload, {
-                contentType: fileToUpload.type,
-            });
-            const downloadURL = await getDownloadURL(uploadResult.ref);
+            const fileRef = ref(storage, `resources/${Date.now()}_${fileToUpload.name}`);
+            await uploadBytes(fileRef, fileToUpload);
+            const downloadURL = await getDownloadURL(fileRef);
 
             const resourceData = {
               name: newResource.name,
