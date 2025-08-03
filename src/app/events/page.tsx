@@ -8,17 +8,19 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { AppHeader } from '@/components/AppHeader';
 import { events } from '@/lib/data';
 import { CheckCircle, Clock, PartyPopper } from 'lucide-react';
-import { format, isSameDay } from 'date-fns';
+import { format, isFuture, isSameDay } from 'date-fns';
 
 export default function EventsPage() {
-  const [date, setDate] = useState<Date | undefined>(new Date());
+  const [date, setDate] = useState<Date | undefined>();
   const [rsvps, setRsvps] = useState<Record<string, boolean>>({});
 
   const handleRsvp = (eventId: string) => {
     setRsvps((prev) => ({ ...prev, [eventId]: !prev[eventId] }));
   };
 
-  const filteredEvents = date ? events.filter(event => isSameDay(event.date, date)) : [];
+  const filteredEvents = date
+    ? events.filter(event => isSameDay(event.date, date!))
+    : events.filter(event => isFuture(event.date) || isSameDay(event.date, new Date()));
 
   return (
     <div className="flex flex-col h-full">
@@ -43,7 +45,7 @@ export default function EventsPage() {
           </div>
           <div className="lg:col-span-2">
             <h2 className="text-2xl font-headline font-semibold mb-4">
-              Events for {date ? format(date, 'PPP') : '...'}
+              {date ? `Events for ${format(date, 'PPP')}` : 'Upcoming Events'}
             </h2>
             <div className="space-y-4">
               {filteredEvents.length > 0 ? (
@@ -53,7 +55,7 @@ export default function EventsPage() {
                       <CardTitle className="font-headline">{event.title}</CardTitle>
                       <div className="flex items-center text-sm text-muted-foreground pt-1">
                           <Clock className="h-4 w-4 mr-2" />
-                          <span>{format(event.date, "p")}</span>
+                          <span>{format(event.date, "PPP, p")}</span>
                       </div>
                     </CardHeader>
                     <CardContent>
@@ -75,7 +77,9 @@ export default function EventsPage() {
                 <Card className="flex flex-col items-center justify-center p-8 border-dashed">
                     <PartyPopper className="h-12 w-12 text-muted-foreground mb-4" />
                     <CardTitle className="font-headline text-lg">No Events Scheduled</CardTitle>
-                    <CardDescription className="mt-2">There are no events for this day. Try another date!</CardDescription>
+                    <CardDescription className="mt-2">
+                      {date ? 'There are no events for this day. Try another date!' : 'There are no upcoming events.'}
+                    </CardDescription>
                 </Card>
               )}
             </div>
