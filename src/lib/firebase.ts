@@ -7,9 +7,9 @@ import { getStorage } from "firebase/storage";
 
 const firebaseConfig = {
   apiKey: "AIzaSyDohuQq_1gWajvmjH6qqeU3s6MIo0zglX4",
-  authDomain: "campusconnect-a41e3.firebaseapp.com",
-  projectId: "campusconnect-a41e3",
-  storageBucket: "campusconnect-a41e3.appspot.com",
+  authDomain: "campusconnect-ee87d.firebaseapp.com",
+  projectId: "campusconnect-ee87d",
+  storageBucket: "campusconnect-ee87d.appspot.com",
   messagingSenderId: "197519420772",
   appId: "1:197519420772:web:3f8bc8e33483d374355e71",
   measurementId: "G-CVFPG47TVN"
