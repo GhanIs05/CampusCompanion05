@@ -1,3 +1,4 @@
+
 export const forumThreads = [
   {
     id: '1',
@@ -6,8 +7,9 @@ export const forumThreads = [
     course: 'PHY301',
     upvotes: 23,
     replies: 7,
-    timestamp: '2 hours ago',
+    timestamp: '2024-05-20T10:00:00.000Z',
     tags: ['quantum-mechanics', 'homework-help'],
+    body: 'I\'m really stuck on question 2 of the latest problem set. Can anyone explain the concept of wave-particle duality in simpler terms? Any help would be appreciated!'
   },
   {
     id: '2',
@@ -16,8 +18,9 @@ export const forumThreads = [
     course: 'CS202',
     upvotes: 45,
     replies: 12,
-    timestamp: '5 hours ago',
-    tags: ['functional-programming', 'resources'],
+    timestamp: '2024-05-20T14:30:00.000Z',
+    tags: ['functional-programming', 'resources', 'haskell'],
+    body: 'I\'m finding the concepts of monads and functors in Haskell very abstract. Does anyone have recommendations for good tutorials, books, or video series that explain these topics clearly? The textbook is a bit dense.'
   },
   {
     id: '3',
@@ -26,8 +29,9 @@ export const forumThreads = [
     course: 'HIST101',
     upvotes: 15,
     replies: 4,
-    timestamp: '1 day ago',
-    tags: ['study-group', 'midterm'],
+    timestamp: '2024-05-19T09:00:00.000Z',
+    tags: ['study-group', 'midterm', 'american-revolution'],
+    body: 'Looking to form a study group for the upcoming HIST101 midterm. I\'ve booked a room in the library for Wednesday afternoon. Let me know if you\'re interested in joining!'
   },
   {
     id: '4',
@@ -36,8 +40,20 @@ export const forumThreads = [
     course: 'BIO210',
     upvotes: 8,
     replies: 2,
-    timestamp: '2 days ago',
-    tags: ['lab-report', 'submission'],
+    timestamp: '2024-05-18T18:00:00.000Z',
+    tags: ['lab-report', 'submission', 'guidelines'],
+    body: 'The instructions for Lab 4 mention a "results summary" section, but it\'s not in the provided template. Can someone clarify what\'s expected here? Is it a separate document?'
+  },
+   {
+    id: '5',
+    title: 'Tips for Creative Writing Workshop (ENG250)?',
+    author: 'Eve Davis',
+    course: 'ENG250',
+    upvotes: 33,
+    replies: 9,
+    timestamp: '2024-05-21T11:00:00.000Z',
+    tags: ['creative-writing', 'workshop', 'tips'],
+    body: 'Hey everyone, I\'m new to creative writing workshops. Any advice on how to give and receive constructive criticism effectively? A bit nervous about sharing my work!'
   },
 ];
 

@@ -13,10 +13,11 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
 import Link from 'next/link';
-import { collection, addDoc, getDocs, doc, updateDoc, increment } from 'firebase/firestore';
+import { collection, addDoc, getDocs, doc, updateDoc, increment, writeBatch } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { useAuth } from '@/contexts/AuthContext';
 import { PageWrapper } from '@/components/PageWrapper';
+import { forumThreads as sampleForumThreads } from '@/lib/data';
 
 interface ForumThread {
     id: string;
@@ -34,6 +35,7 @@ interface ForumThread {
 export default function ForumsPage() {
   const [searchTerm, setSearchTerm] = useState('');
   const [threads, setThreads] = useState<ForumThread[]>([]);
+  const [loading, setLoading] = useState(true);
   const [open, setOpen] = useState(false);
   const { toast } = useToast();
   const { user } = useAuth();
@@ -45,10 +47,30 @@ export default function ForumsPage() {
     body: '',
   });
 
+  const seedDatabase = async () => {
+    const batch = writeBatch(db);
+    sampleForumThreads.forEach((thread) => {
+        const { id, ...threadData } = thread;
+        const threadRef = doc(collection(db, "forumThreads"));
+        batch.set(threadRef, threadData);
+    });
+    await batch.commit();
+  }
+
   const fetchThreads = async () => {
+      setLoading(true);
       const querySnapshot = await getDocs(collection(db, "forumThreads"));
-      const threadsData = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as ForumThread));
-      setThreads(threadsData);
+      
+      if(querySnapshot.empty) {
+        await seedDatabase();
+        const newQuerySnapshot = await getDocs(collection(db, "forumThreads"));
+        const threadsData = newQuerySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as ForumThread));
+        setThreads(threadsData);
+      } else {
+        const threadsData = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as ForumThread));
+        setThreads(threadsData);
+      }
+      setLoading(false);
   }
 
   useEffect(() => {
@@ -124,8 +146,18 @@ export default function ForumsPage() {
     thread.course.toLowerCase().includes(searchTerm.toLowerCase()) ||
     thread.tags.some(tag => tag.toLowerCase().includes(searchTerm.toLowerCase()))
   );
+  
+  const courses = [...new Set(threads.map(r => r.course).concat(sampleForumThreads.map(r => r.course)))];
 
-  const courses = [...new Set(threads.map(r => r.course))];
+  if (loading) {
+    return (
+        <PageWrapper title="Forums">
+            <main className="flex-1 flex items-center justify-center text-muted-foreground">
+                Loading...
+            </main>
+        </PageWrapper>
+    )
+  }
 
   return (
     <PageWrapper title="Forums">
@@ -167,7 +199,7 @@ export default function ForumsPage() {
                             <SelectValue placeholder="Select a course" />
                         </SelectTrigger>
                         <SelectContent>
-                            {courses.map(course => <SelectItem key={course} value={course}>{course}</SelectItem>)}
+                            {[...new Set(courses)].map(course => <SelectItem key={course} value={course}>{course}</SelectItem>)}
                         </SelectContent>
                     </Select>
                   </div>
