@@ -10,7 +10,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { ArrowUp, CornerUpLeft, MessageCircle, Tag } from 'lucide-react';
 import { useParams } from 'next/navigation';
 import { useState, useEffect } from 'react';
-import { doc, getDoc, collection, addDoc, getDocs, updateDoc, increment } from 'firebase/firestore';
+import { doc, getDoc, collection, addDoc, getDocs, updateDoc, increment, onSnapshot, query, orderBy } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
@@ -47,26 +47,32 @@ export default function ForumThreadPage() {
     const [replyContent, setReplyContent] = useState('');
     const [loading, setLoading] = useState(true);
 
-    const fetchThreadAndReplies = async () => {
+    useEffect(() => {
+        if (!threadId) return;
+
         setLoading(true);
         const threadRef = doc(db, "forumThreads", threadId);
-        const threadSnap = await getDoc(threadRef);
-
-        if (threadSnap.exists()) {
-            setThread({ id: threadSnap.id, ...threadSnap.data() } as ForumThread);
-        }
+        
+        const unsubscribeThread = onSnapshot(threadRef, (threadSnap) => {
+            if (threadSnap.exists()) {
+                setThread({ id: threadSnap.id, ...threadSnap.data() } as ForumThread);
+            }
+            setLoading(false);
+        });
 
         const repliesRef = collection(db, "forumThreads", threadId, "replies");
-        const repliesSnap = await getDocs(repliesRef);
-        const repliesData = repliesSnap.docs.map(doc => ({ id: doc.id, ...doc.data() } as Reply));
-        setReplies(repliesData);
-        setLoading(false);
-    }
-    
-    useEffect(() => {
-        if(threadId) {
-            fetchThreadAndReplies();
-        }
+        const q = query(repliesRef, orderBy("timestamp", "asc"));
+
+        const unsubscribeReplies = onSnapshot(q, (repliesSnap) => {
+            const repliesData = repliesSnap.docs.map(doc => ({ id: doc.id, ...doc.data() } as Reply));
+            setReplies(repliesData);
+        });
+
+        return () => {
+            unsubscribeThread();
+            unsubscribeReplies();
+        };
+
     }, [threadId]);
 
 
@@ -88,7 +94,7 @@ export default function ForumThreadPage() {
             });
 
             setReplyContent('');
-            fetchThreadAndReplies(); // Refresh replies
+            // No need to manually refetch, onSnapshot will handle it.
         } else if (!user) {
             toast({ variant: "destructive", title: "Not logged in", description: "You must be logged in to reply."});
         }
@@ -150,7 +156,7 @@ export default function ForumThreadPage() {
                             </Button>
                             <div className="flex items-center gap-2 text-muted-foreground">
                                 <MessageCircle className="h-5 w-5" />
-                                <span>{replies.length} Replies</span>
+                                <span>{thread.replies} Replies</span>
                             </div>
                         </CardFooter>
                     </Card>
