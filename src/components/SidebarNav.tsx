@@ -3,10 +3,9 @@
 import { usePathname } from 'next/navigation';
 import Link from 'next/link';
 import { SidebarMenu, SidebarMenuItem, SidebarMenuButton } from '@/components/ui/sidebar';
-import { LayoutDashboard, MessageSquare, BookOpen, Calendar, User, FolderKanban } from 'lucide-react';
+import { MessageSquare, FolderKanban, Calendar, User } from 'lucide-react';
 
 const navItems = [
-  { href: '/', label: 'Dashboard', icon: LayoutDashboard },
   { href: '/forums', label: 'Forums', icon: MessageSquare },
   { href: '/resources', label: 'Resources', icon: FolderKanban },
   { href: '/events', label: 'Events', icon: Calendar },
@@ -17,7 +16,9 @@ export function SidebarNav() {
   const pathname = usePathname();
 
   const isActive = (href: string) => {
-    return pathname === href || (href === '/' && pathname.startsWith('/dashboard'));
+    // Make forums active for the root path as well
+    if (href === '/forums' && pathname === '/') return true;
+    return pathname === href;
   };
 
   return (
