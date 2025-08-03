@@ -86,6 +86,27 @@ export const resourceLibrary = [
 
 export const events = [
   {
+    id: 'evt-today-1',
+    title: 'CS Club Project Showcase',
+    date: new Date(),
+    category: 'Club Activity',
+    description: 'See the amazing projects our computer science club members have been working on this semester.',
+  },
+  {
+    id: 'evt-today-2',
+    title: 'History Dept. Mixer',
+    date: new Date(),
+    category: 'Social',
+    description: 'Meet and greet with faculty and students from the history department. Refreshments will be served.',
+  },
+  {
+    id: 'evt-tomorrow',
+    title: 'Biology Study Session',
+    date: new Date(new Date().setDate(new Date().getDate() + 1)),
+    category: 'Study Group',
+    description: 'A group study session for the upcoming BIO101 midterm. We will cover chapters 4-6.',
+  },
+  {
     id: 'evt1',
     title: 'University Hackathon 2024',
     date: new Date(new Date().setDate(new Date().getDate() + 7)),
