@@ -9,12 +9,15 @@ import { AppHeader } from '@/components/AppHeader';
 import { events } from '@/lib/data';
 import { CheckCircle, Clock, PartyPopper } from 'lucide-react';
 import { format, isFuture, isSameDay } from 'date-fns';
+import Link from 'next/link';
 
 export default function EventsPage() {
   const [date, setDate] = useState<Date | undefined>();
   const [rsvps, setRsvps] = useState<Record<string, boolean>>({});
 
-  const handleRsvp = (eventId: string) => {
+  const handleRsvp = (e: React.MouseEvent, eventId: string) => {
+    e.stopPropagation();
+    e.preventDefault();
     setRsvps((prev) => ({ ...prev, [eventId]: !prev[eventId] }));
   };
 
@@ -50,28 +53,30 @@ export default function EventsPage() {
             <div className="space-y-4">
               {filteredEvents.length > 0 ? (
                 filteredEvents.map((event) => (
-                  <Card key={event.id}>
-                    <CardHeader>
-                      <CardTitle className="font-headline">{event.title}</CardTitle>
-                      <div className="flex items-center text-sm text-muted-foreground pt-1">
-                          <Clock className="h-4 w-4 mr-2" />
-                          <span>{format(event.date, "PPP, p")}</span>
-                      </div>
-                    </CardHeader>
-                    <CardContent>
-                      <p className="text-sm text-muted-foreground">{event.description}</p>
-                    </CardContent>
-                    <CardFooter>
-                      <Button
-                        onClick={() => handleRsvp(event.id)}
-                        variant={rsvps[event.id] ? 'secondary' : 'default'}
-                        className={rsvps[event.id] ? '' : 'bg-accent hover:bg-accent/90 text-accent-foreground'}
-                      >
-                        <CheckCircle className="mr-2 h-4 w-4" />
-                        {rsvps[event.id] ? 'RSVPed' : 'RSVP'}
-                      </Button>
-                    </CardFooter>
-                  </Card>
+                  <Link href={`/events/${event.id}`} key={event.id} className="block hover:bg-muted/50 rounded-lg">
+                    <Card>
+                      <CardHeader>
+                        <CardTitle className="font-headline">{event.title}</CardTitle>
+                        <div className="flex items-center text-sm text-muted-foreground pt-1">
+                            <Clock className="h-4 w-4 mr-2" />
+                            <span>{format(event.date, "PPP, p")}</span>
+                        </div>
+                      </CardHeader>
+                      <CardContent>
+                        <p className="text-sm text-muted-foreground">{event.description}</p>
+                      </CardContent>
+                      <CardFooter>
+                        <Button
+                          onClick={(e) => handleRsvp(e, event.id)}
+                          variant={rsvps[event.id] ? 'secondary' : 'default'}
+                          className={rsvps[event.id] ? '' : 'bg-accent hover:bg-accent/90 text-accent-foreground'}
+                        >
+                          <CheckCircle className="mr-2 h-4 w-4" />
+                          {rsvps[event.id] ? 'RSVPed' : 'RSVP'}
+                        </Button>
+                      </CardFooter>
+                    </Card>
+                  </Link>
                 ))
               ) : (
                 <Card className="flex flex-col items-center justify-center p-8 border-dashed">
