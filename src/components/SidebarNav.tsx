@@ -1,16 +1,21 @@
+
 'use client';
 
 import { usePathname } from 'next/navigation';
 import Link from 'next/link';
-import { SidebarMenu, SidebarMenuItem, SidebarMenuButton } from '@/components/ui/sidebar';
-import { MessageSquare, FolderKanban, Calendar, User } from 'lucide-react';
+import { SidebarGroup, SidebarGroupLabel, SidebarMenu, SidebarMenuItem, SidebarMenuButton, SidebarSeparator } from '@/components/ui/sidebar';
+import { MessageSquare, FolderKanban, Calendar, User, Home } from 'lucide-react';
 
-const navItems = [
+const mainNavItems = [
+  { href: '/forums', label: 'Home', icon: Home },
   { href: '/forums', label: 'Forums', icon: MessageSquare },
   { href: '/resources', label: 'Resources', icon: FolderKanban },
   { href: '/events', label: 'Events', icon: Calendar },
-  { href: '/profile', label: 'Profile', icon: User },
 ];
+
+const userNavItems = [
+    { href: '/profile', label: 'Profile', icon: User },
+]
 
 export function SidebarNav() {
   const pathname = usePathname();
@@ -22,19 +27,41 @@ export function SidebarNav() {
   };
 
   return (
-    <SidebarMenu>
-      {navItems.map((item) => (
-        <SidebarMenuItem key={item.href}>
-          <Link href={item.href} passHref>
-            <SidebarMenuButton asChild isActive={isActive(item.href)} tooltip={item.label}>
-              <div>
-                <item.icon />
-                <span>{item.label}</span>
-              </div>
-            </SidebarMenuButton>
-          </Link>
-        </SidebarMenuItem>
-      ))}
-    </SidebarMenu>
+    <>
+        <SidebarGroup>
+            <SidebarMenu>
+            {mainNavItems.map((item) => (
+                <SidebarMenuItem key={item.href}>
+                <Link href={item.href} passHref>
+                    <SidebarMenuButton asChild isActive={isActive(item.href)} tooltip={item.label}>
+                    <div>
+                        <item.icon />
+                        <span>{item.label}</span>
+                    </div>
+                    </SidebarMenuButton>
+                </Link>
+                </SidebarMenuItem>
+            ))}
+            </SidebarMenu>
+      </SidebarGroup>
+      <SidebarSeparator />
+        <SidebarGroup>
+            <SidebarGroupLabel>User</SidebarGroupLabel>
+            <SidebarMenu>
+            {userNavItems.map((item) => (
+                <SidebarMenuItem key={item.href}>
+                <Link href={item.href} passHref>
+                    <SidebarMenuButton asChild isActive={isActive(item.href)} tooltip={item.label}>
+                    <div>
+                        <item.icon />
+                        <span>{item.label}</span>
+                    </div>
+                    </SidebarMenuButton>
+                </Link>
+                </SidebarMenuItem>
+            ))}
+            </SidebarMenu>
+      </SidebarGroup>
+    </>
   );
 }
