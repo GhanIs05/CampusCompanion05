@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
@@ -24,6 +25,7 @@ interface UserProfile {
     bio: string;
     avatar: string;
     pinnedResources?: string[];
+    rsvpedEvents?: string[];
 }
 
 export default function ProfilePage() {
@@ -35,6 +37,7 @@ export default function ProfilePage() {
         bio: '',
         avatar: '',
         pinnedResources: [],
+        rsvpedEvents: [],
     });
     const { toast } = useToast();
     const [avatarFile, setAvatarFile] = useState<File | null>(null);
@@ -97,8 +100,13 @@ export default function ProfilePage() {
             }
 
             // Update user profile in Firestore
-            const { pinnedResources, ...profileData } = userProfile;
-            const updatedProfileData = { ...profileData, avatar: avatarUrl };
+            const { pinnedResources, rsvpedEvents, ...profileData } = userProfile;
+            const updatedProfileData = { 
+                ...profileData,
+                avatar: avatarUrl,
+                pinnedResources: pinnedResources || [],
+                rsvpedEvents: rsvpedEvents || [],
+             };
             await setDoc(doc(db, "users", user.uid), updatedProfileData, { merge: true });
 
             // Update user profile in Firebase Auth

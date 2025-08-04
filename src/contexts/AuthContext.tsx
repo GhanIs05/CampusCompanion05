@@ -55,6 +55,7 @@ export const AuthProvider: React.FC<{children: React.ReactNode}> = ({ children }
       bio: '',
       avatar: photoURL,
       pinnedResources: [],
+      rsvpedEvents: [],
     });
     
     return userCredential;

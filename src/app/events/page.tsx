@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Calendar } from '@/components/ui/calendar';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
@@ -10,15 +10,58 @@ import { CheckCircle, Clock, PartyPopper } from 'lucide-react';
 import { format, isFuture, isSameDay } from 'date-fns';
 import Link from 'next/link';
 import { PageWrapper } from '@/components/PageWrapper';
+import { useAuth } from '@/contexts/AuthContext';
+import { useToast } from '@/hooks/use-toast';
+import { doc, getDoc, updateDoc, arrayUnion, arrayRemove } from 'firebase/firestore';
+import { db } from '@/lib/firebase';
+
+
+interface UserProfile {
+    rsvpedEvents?: string[];
+}
 
 export default function EventsPage() {
   const [date, setDate] = useState<Date | undefined>();
-  const [rsvps, setRsvps] = useState<Record<string, boolean>>({});
+  const [rsvpedEventIds, setRsvpedEventIds] = useState<string[]>([]);
+  const { user } = useAuth();
+  const { toast } = useToast();
 
-  const handleRsvp = (e: React.MouseEvent, eventId: string) => {
+  useEffect(() => {
+    if (user) {
+      const fetchUserRsvps = async () => {
+        const userDocRef = doc(db, 'users', user.uid);
+        const userDocSnap = await getDoc(userDocRef);
+        if (userDocSnap.exists()) {
+          const userData = userDocSnap.data() as UserProfile;
+          setRsvpedEventIds(userData.rsvpedEvents || []);
+        }
+      };
+      fetchUserRsvps();
+    }
+  }, [user]);
+
+  const handleRsvp = async (e: React.MouseEvent, eventId: string) => {
     e.stopPropagation();
     e.preventDefault();
-    setRsvps((prev) => ({ ...prev, [eventId]: !prev[eventId] }));
+    if (!user) {
+      toast({ variant: 'destructive', title: 'Not Logged In', description: 'You must be logged in to RSVP.' });
+      return;
+    }
+
+    const userDocRef = doc(db, 'users', user.uid);
+    let newRsvpedEventIds;
+    
+    if (rsvpedEventIds.includes(eventId)) {
+      await updateDoc(userDocRef, { rsvpedEvents: arrayRemove(eventId) });
+      newRsvpedEventIds = rsvpedEventIds.filter(id => id !== eventId);
+      toast({ title: 'RSVP Removed' });
+    } else {
+      await updateDoc(userDocRef, { rsvpedEvents: arrayUnion(eventId) });
+      newRsvpedEventIds = [...rsvpedEventIds, eventId];
+      toast({ title: 'RSVP Confirmed!' });
+    }
+
+    setRsvpedEventIds(newRsvpedEventIds);
   };
 
   const filteredEvents = date
@@ -67,11 +110,11 @@ export default function EventsPage() {
                       <CardFooter>
                         <Button
                           onClick={(e) => handleRsvp(e, event.id)}
-                          variant={rsvps[event.id] ? 'secondary' : 'default'}
-                          className={rsvps[event.id] ? '' : 'bg-accent hover:bg-accent/90 text-accent-foreground'}
+                          variant={rsvpedEventIds.includes(event.id) ? 'secondary' : 'default'}
+                          className={!rsvpedEventIds.includes(event.id) ? 'bg-accent hover:bg-accent/90 text-accent-foreground' : ''}
                         >
                           <CheckCircle className="mr-2 h-4 w-4" />
-                          {rsvps[event.id] ? 'RSVPed' : 'RSVP'}
+                          {rsvpedEventIds.includes(event.id) ? 'RSVPed' : 'RSVP'}
                         </Button>
                       </CardFooter>
                     </Card>
