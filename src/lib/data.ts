@@ -3,65 +3,65 @@
 export const forumThreads = [
   {
     id: '1',
-    title: 'Struggling with Quantum Mechanics Problem Set 3',
+    title: 'Struggling with Thermodynamics Problem Set 3',
     author: 'Alice Johnson',
-    course: 'PHY301',
+    course: 'MECH201',
     upvotes: 23,
     replies: 7,
     timestamp: '2024-05-20T10:00:00.000Z',
-    tags: ['quantum-mechanics', 'homework-help'],
-    body: 'I\'m really stuck on question 2 of the latest problem set. Can anyone explain the concept of wave-particle duality in simpler terms? Any help would be appreciated!'
+    tags: ['thermodynamics', 'homework-help'],
+    body: 'I\'m really stuck on question 2 of the latest problem set regarding entropy. Can anyone explain the concept of the Carnot cycle in simpler terms? Any help would be appreciated!'
   },
   {
     id: '2',
-    title: 'Best resources for understanding Functional Programming in CS202?',
+    title: 'Best resources for understanding VHDL for Digital Logic Design?',
     author: 'Bob Williams',
-    course: 'CS202',
+    course: 'ECE351',
     upvotes: 45,
     replies: 12,
     timestamp: '2024-05-20T14:30:00.000Z',
-    tags: ['functional-programming', 'resources', 'haskell'],
-    body: 'I\'m finding the concepts of monads and functors in Haskell very abstract. Does anyone have recommendations for good tutorials, books, or video series that explain these topics clearly? The textbook is a bit dense.'
+    tags: ['digital-logic', 'resources', 'vhdl'],
+    body: 'I\'m finding the syntax for state machines in VHDL very tricky. Does anyone have recommendations for good tutorials, books, or video series that explain these topics clearly? The textbook is a bit dense.'
   },
   {
     id: '3',
-    title: 'Midterm study group for HIST101',
+    title: 'Midterm study group for Statics & Structures',
     author: 'Charlie Brown',
-    course: 'HIST101',
+    course: 'CIV100',
     upvotes: 15,
     replies: 4,
     timestamp: '2024-05-19T09:00:00.000Z',
-    tags: ['study-group', 'midterm', 'american-revolution'],
-    body: 'Looking to form a study group for the upcoming HIST101 midterm. I\'ve booked a room in the library for Wednesday afternoon. Let me know if you\'re interested in joining!'
+    tags: ['study-group', 'midterm', 'statics'],
+    body: 'Looking to form a study group for the upcoming CIV100 midterm. I\'ve booked a room in the engineering building for Wednesday afternoon. Let me know if you\'re interested in joining!'
   },
   {
     id: '4',
-    title: 'Clarification on Lab 4 submission guidelines for BIO210',
+    title: 'Clarification on Lab 4 submission guidelines for Biomechanics',
     author: 'Diana Miller',
-    course: 'BIO210',
+    course: 'BME205',
     upvotes: 8,
     replies: 2,
     timestamp: '2024-05-18T18:00:00.000Z',
     tags: ['lab-report', 'submission', 'guidelines'],
-    body: 'The instructions for Lab 4 mention a "results summary" section, but it\'s not in the provided template. Can someone clarify what\'s expected here? Is it a separate document?'
+    body: 'The instructions for Lab 4 mention a "force plate data analysis" section, but it\'s not in the provided template. Can someone clarify what\'s expected here? Is it a separate script?'
   },
    {
     id: '5',
-    title: 'Tips for Creative Writing Workshop (ENG250)?',
+    title: 'Tips for the final project in Chemical Reaction Engineering?',
     author: 'Eve Davis',
-    course: 'ENG250',
+    course: 'CHE330',
     upvotes: 33,
     replies: 9,
     timestamp: '2024-05-21T11:00:00.000Z',
-    tags: ['creative-writing', 'workshop', 'tips'],
-    body: 'Hey everyone, I\'m new to creative writing workshops. Any advice on how to give and receive constructive criticism effectively? A bit nervous about sharing my work!'
+    tags: ['final-project', 'reactors', 'tips'],
+    body: 'Hey everyone, I\'m starting the final design project for CHE330. Any advice on selecting the right reactor type and optimizing the process conditions? A bit overwhelmed by the possibilities!'
   },
 ];
 
 export const resourceLibrary = [
   {
     id: 'res1',
-    name: 'Intro to Quantum Mechanics Lecture Notes',
+    name: 'Intro to Thermodynamics Lecture Notes',
     category: 'Lecture Notes',
     uploader: 'Prof. Davis',
     date: '2023-09-15',
@@ -70,7 +70,7 @@ export const resourceLibrary = [
   },
   {
     id: 'res2',
-    name: 'Functional Programming Cheat Sheet',
+    name: 'VHDL Quick Reference Sheet',
     category: 'Cheat Sheet',
     uploader: 'Alice Johnson',
     date: '2023-10-02',
@@ -79,7 +79,7 @@ export const resourceLibrary = [
   },
   {
     id: 'res3',
-    name: 'American Revolution Timeline',
+    name: 'Truss Analysis Study Guide',
     category: 'Study Guide',
     uploader: 'Charlie Brown',
     date: '2023-09-28',
@@ -88,7 +88,7 @@ export const resourceLibrary = [
   },
   {
     id: 'res4',
-    name: 'Cellular Respiration Diagram',
+    name: 'Chemical Reactor Design Flowchart',
     category: 'Visual Aid',
     uploader: 'Admin',
     date: '2023-09-20',
@@ -97,7 +97,7 @@ export const resourceLibrary = [
   },
    {
     id: 'res5',
-    name: 'Historical Analysis Essay Example',
+    name: 'Biomechanics Lab Report Example',
     category: 'Example Work',
     uploader: 'Prof. Smith',
     date: '2023-10-05',
@@ -109,24 +109,24 @@ export const resourceLibrary = [
 export const events = [
   {
     id: 'evt-today-1',
-    title: 'CS Club Project Showcase',
+    title: 'ECE Club Project Showcase',
     date: new Date(),
     category: 'Club Activity',
-    description: 'See the amazing projects our computer science club members have been working on this semester.',
+    description: 'See the amazing projects our electrical and computer engineering club members have been working on this semester.',
   },
   {
     id: 'evt-today-2',
-    title: 'History Dept. Mixer',
+    title: 'Civil Engineering Dept. Mixer',
     date: new Date(),
     category: 'Social',
-    description: 'Meet and greet with faculty and students from the history department. Refreshments will be served.',
+    description: 'Meet and greet with faculty and students from the civil engineering department. Refreshments will be served.',
   },
   {
     id: 'evt-tomorrow',
-    title: 'Biology Study Session',
+    title: 'Mechanical Engineering Study Session',
     date: new Date(new Date().setDate(new Date().getDate() + 1)),
     category: 'Study Group',
-    description: 'A group study session for the upcoming BIO101 midterm. We will cover chapters 4-6.',
+    description: 'A group study session for the upcoming MECH201 midterm. We will cover chapters 4-6.',
   },
   {
     id: 'evt1',
@@ -137,14 +137,14 @@ export const events = [
   },
   {
     id: 'evt2',
-    title: 'Guest Lecture: AI in Modern Science',
+    title: 'Guest Lecture: AI in Modern Engineering',
     date: new Date(new Date().setDate(new Date().getDate() + 12)),
     category: 'Lecture',
     description: 'A talk by leading AI researcher Dr. Evelyn Reed.',
   },
   {
     id: 'evt3',
-    title: 'Fall Semester Career Fair',
+    title: 'Fall Semester Engineering Career Fair',
     date: new Date(new Date().setDate(new Date().getDate() + 20)),
     category: 'Career',
     description: 'Meet with top companies hiring for internships and full-time roles.',
