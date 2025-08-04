@@ -257,6 +257,7 @@ export default function ForumsPage() {
                         </SelectTrigger>
                         <SelectContent>
                             {[...new Set(courses)].map(course => <SelectItem key={course} value={course}>{course}</SelectItem>)}
+                            <SelectItem value="Other">Other</SelectItem>
                         </SelectContent>
                     </Select>
                   </div>
