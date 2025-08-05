@@ -4,7 +4,9 @@
 import { usePathname } from 'next/navigation';
 import Link from 'next/link';
 import { SidebarGroup, SidebarGroupLabel, SidebarMenu, SidebarMenuItem, SidebarMenuButton, SidebarSeparator } from '@/components/ui/sidebar';
-import { MessageSquare, FolderKanban, Calendar, User, Home } from 'lucide-react';
+import { MessageSquare, FolderKanban, Calendar, User, Home, Shield } from 'lucide-react';
+import { useAuth } from '@/contexts/AuthContext';
+import { ProtectedAction } from '@/components/ProtectedActions';
 
 const mainNavItems = [
   { href: '/home', label: 'Home', icon: Home },
@@ -15,10 +17,15 @@ const mainNavItems = [
 
 const userNavItems = [
     { href: '/profile', label: 'Profile', icon: User },
-]
+];
+
+const adminNavItems = [
+  { href: '/admin', label: 'Admin Panel', icon: Shield },
+];
 
 export function SidebarNav() {
   const pathname = usePathname();
+  const { canModerate } = useAuth();
 
   const isActive = (href: string) => {
     // Make home active for the root path as well
@@ -62,6 +69,27 @@ export function SidebarNav() {
             ))}
             </SidebarMenu>
       </SidebarGroup>
+      
+      <ProtectedAction requiredRoles={['Admin', 'Moderator']}>
+        <SidebarSeparator />
+        <SidebarGroup>
+            <SidebarGroupLabel>Administration</SidebarGroupLabel>
+            <SidebarMenu>
+            {adminNavItems.map((item) => (
+                <SidebarMenuItem key={item.href}>
+                <Link href={item.href} passHref>
+                    <SidebarMenuButton asChild isActive={isActive(item.href)} tooltip={item.label}>
+                    <div>
+                        <item.icon />
+                        <span>{item.label}</span>
+                    </div>
+                    </SidebarMenuButton>
+                </Link>
+                </SidebarMenuItem>
+            ))}
+            </SidebarMenu>
+        </SidebarGroup>
+      </ProtectedAction>
     </>
   );
 }
