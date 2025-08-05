@@ -78,3 +78,50 @@
     @apply bg-background text-foreground;
   }
 }
+
+@layer utilities {
+  .touch-manipulation {
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
+  }
+  
+  /* Mobile calendar improvements */
+  .mobile-calendar {
+    width: 100%;
+    max-width: 100%;
+    overflow-x: auto;
+  }
+  
+  .mobile-calendar .rdp-day {
+    touch-action: manipulation;
+  }
+  
+  /* Improve tap targets for mobile */
+  @media (max-width: 767px) {
+    .rdp-button:focus:not([disabled]),
+    .rdp-button:active:not([disabled]) {
+      background-color: var(--accent);
+      color: var(--accent-foreground);
+    }
+    
+    .rdp-day_selected:hover:not([disabled]) {
+      background-color: var(--primary);
+      color: var(--primary-foreground);
+    }
+    
+    /* Improve text visibility on mobile */
+    .text-muted-foreground {
+      color: hsl(var(--muted-foreground) / 0.9);
+    }
+    
+    /* Improve clickable areas */
+    button, a {
+      min-height: 2.5rem;
+    }
+    
+    /* Improve form inputs on mobile */
+    input, select, textarea {
+      font-size: 16px !important; /* Prevents iOS zoom on focus */
+    }
+  }
+}

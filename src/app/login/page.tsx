@@ -12,6 +12,9 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useRouter } from 'next/navigation';
 import { PageWrapper } from '@/components/PageWrapper';
 
+// Enable static generation for this page
+export const dynamic = 'force-static';
+
 export default function LoginPage() {
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');

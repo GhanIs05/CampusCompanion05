@@ -8,6 +8,7 @@ import { Sidebar, SidebarContent, SidebarHeader, SidebarInset, SidebarProvider }
 import { SidebarNav } from '@/components/SidebarNav';
 import { Flame } from 'lucide-react';
 import { AppHeader } from './AppHeader';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 
 interface PageWrapperProps {
@@ -19,6 +20,7 @@ interface PageWrapperProps {
 export function PageWrapper({ children, title, isPublic = false }: PageWrapperProps) {
   const { user, loading } = useAuth();
   const router = useRouter();
+  const isMobile = useIsMobile();
 
   useEffect(() => {
     if (!loading && !user && !isPublic) {
@@ -39,9 +41,9 @@ export function PageWrapper({ children, title, isPublic = false }: PageWrapperPr
   }
 
   return (
-    <SidebarProvider>
-      <Sidebar>
-        <SidebarHeader>
+    <SidebarProvider defaultOpen={!isMobile}>
+      <Sidebar collapsible="offcanvas" className="border-r">
+        <SidebarHeader className="border-b">
           <div className="flex items-center gap-2 p-2">
             <Flame className="w-6 h-6 text-primary" />
             <h1 className="text-xl font-headline font-semibold">CampusConnect</h1>
@@ -52,7 +54,7 @@ export function PageWrapper({ children, title, isPublic = false }: PageWrapperPr
         </SidebarContent>
       </Sidebar>
       <SidebarInset>
-        <div className="flex flex-col h-full">
+        <div className="flex flex-col h-full min-h-screen">
             <AppHeader title={title} />
             {children}
         </div>

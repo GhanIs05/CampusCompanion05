@@ -1,10 +1,47 @@
 rules_version = '2';
 
-// Craft rules based on data in your Firestore database
-// allow write: if firestore.get(
-//    /databases/(default)/documents/users/$(request.auth.uid)).data.isAdmin;
 service firebase.storage {
   match /b/{bucket}/o {
+    // Helper function to check file extension
+    function hasValidExtension(fileName) {
+      let allowedExtensions = ['jpg', 'jpeg', 'png', 'webp', 'gif', 'pdf', 'doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx', 'txt', 'csv'];
+      let extension = fileName.split('.').pop().lower();
+      return extension in allowedExtensions;
+    }
+    
+    // Allow public read access to resources folder with strict validation
+    match /resources/{fileName} {
+      allow read: if true;
+      allow write: if request.auth != null
+        && request.resource.size < 50 * 1024 * 1024 // 50MB max
+        && hasValidExtension(resource.name)
+        && (
+          request.resource.contentType.matches('image/(jpeg|jpg|png|webp|gif)') ||
+          request.resource.contentType == 'application/pdf' ||
+          request.resource.contentType == 'text/plain' ||
+          request.resource.contentType == 'text/csv' ||
+          request.resource.contentType == 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' ||
+          request.resource.contentType == 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' ||
+          request.resource.contentType == 'application/vnd.openxmlformats-officedocument.presentationml.presentation' ||
+          request.resource.contentType == 'application/msword' ||
+          request.resource.contentType == 'application/vnd.ms-excel' ||
+          request.resource.contentType == 'application/vnd.ms-powerpoint'
+        );
+      allow delete: if request.auth != null;
+    }
+    
+    // Allow authenticated users to upload profile pictures with strict validation
+    match /profiles/{userId}/{fileName} {
+      allow read: if true;
+      allow write: if request.auth != null 
+        && request.auth.uid == userId
+        && request.resource.size < 5 * 1024 * 1024 // 5MB max for avatars
+        && request.resource.contentType.matches('image/(jpeg|jpg|png|webp)')
+        && hasValidExtension(resource.name);
+      allow delete: if request.auth != null && request.auth.uid == userId;
+    }
+    
+    // Deny all other access
     match /{allPaths=**} {
       allow read, write: if false;
     }

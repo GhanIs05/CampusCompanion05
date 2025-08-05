@@ -5,6 +5,7 @@ import { usePathname } from 'next/navigation';
 import Link from 'next/link';
 import { SidebarGroup, SidebarGroupLabel, SidebarMenu, SidebarMenuItem, SidebarMenuButton, SidebarSeparator } from '@/components/ui/sidebar';
 import { MessageSquare, FolderKanban, Calendar, User, Home } from 'lucide-react';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 const mainNavItems = [
   { href: '/home', label: 'Home', icon: Home },
@@ -19,6 +20,7 @@ const userNavItems = [
 
 export function SidebarNav() {
   const pathname = usePathname();
+  const isMobile = useIsMobile();
 
   const isActive = (href: string) => {
     // Make home active for the root path as well
@@ -34,9 +36,9 @@ export function SidebarNav() {
                 <SidebarMenuItem key={item.href}>
                 <Link href={item.href} passHref>
                     <SidebarMenuButton asChild isActive={isActive(item.href)} tooltip={item.label}>
-                    <div>
-                        <item.icon />
-                        <span>{item.label}</span>
+                    <div className={isMobile ? "py-1.5" : ""}>
+                        <item.icon className={isMobile ? "h-5 w-5" : ""} />
+                        <span className={isMobile ? "text-sm" : ""}>{item.label}</span>
                     </div>
                     </SidebarMenuButton>
                 </Link>
@@ -46,15 +48,15 @@ export function SidebarNav() {
       </SidebarGroup>
       <SidebarSeparator />
         <SidebarGroup>
-            <SidebarGroupLabel>User</SidebarGroupLabel>
+            <SidebarGroupLabel className={isMobile ? "text-xs" : ""}>User</SidebarGroupLabel>
             <SidebarMenu>
             {userNavItems.map((item) => (
                 <SidebarMenuItem key={item.href}>
                 <Link href={item.href} passHref>
                     <SidebarMenuButton asChild isActive={isActive(item.href)} tooltip={item.label}>
-                    <div>
-                        <item.icon />
-                        <span>{item.label}</span>
+                    <div className={isMobile ? "py-1.5" : ""}>
+                        <item.icon className={isMobile ? "h-5 w-5" : ""} />
+                        <span className={isMobile ? "text-sm" : ""}>{item.label}</span>
                     </div>
                     </SidebarMenuButton>
                 </Link>

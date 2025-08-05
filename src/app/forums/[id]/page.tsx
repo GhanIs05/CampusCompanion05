@@ -1,4 +1,3 @@
-
 'use client';
 
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -20,6 +19,7 @@ interface ForumThread {
     id: string;
     title: string;
     author: string;
+    authorId?: string;
     course: string;
     upvotes: number;
     replies: number;
@@ -84,18 +84,40 @@ export default function ForumThreadPage() {
 
     const handlePostReply = async () => {
         if (replyContent.trim() && user) {
-            const newReply = {
-                author: user.displayName || 'Campus User',
-                avatar: user.photoURL || 'https://placehold.co/100x100.png',
-                timestamp: new Date().toISOString(),
-                content: replyContent,
-            };
-            
-            const repliesRef = collection(db, "forumThreads", threadId, "replies");
-            await addDoc(repliesRef, newReply);
+            // Get current user profile for most up-to-date info
+            try {
+                const userDocRef = doc(db, "users", user.uid);
+                const userDocSnap = await getDoc(userDocRef);
+                
+                let authorName = user.displayName || 'Campus User';
+                let authorAvatar = user.photoURL || 'https://placehold.co/100x100.png';
+                
+                if (userDocSnap.exists()) {
+                    const userData = userDocSnap.data();
+                    authorName = userData.name || authorName;
+                    authorAvatar = userData.avatar || authorAvatar;
+                }
+                
+                const newReply = {
+                    author: authorName,
+                    authorId: user.uid,
+                    avatar: authorAvatar,
+                    timestamp: new Date().toISOString(),
+                    content: replyContent,
+                };
+                
+                const repliesRef = collection(db, "forumThreads", threadId, "replies");
+                await addDoc(repliesRef, newReply);
 
-            setReplyContent('');
-            // No need to manually refetch or increment, onSnapshot will handle it.
+                setReplyContent('');
+                toast({ title: "Reply posted successfully!" });
+            } catch (error: any) {
+                toast({ 
+                    variant: "destructive", 
+                    title: "Error", 
+                    description: "Failed to post reply. Please try again." 
+                });
+            }
         } else if (!user) {
             toast({ variant: "destructive", title: "Not logged in", description: "You must be logged in to reply."});
         }
@@ -264,4 +286,3 @@ export default function ForumThreadPage() {
     );
 }
 
-    

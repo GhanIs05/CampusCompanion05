@@ -56,6 +56,8 @@ export const AuthProvider: React.FC<{children: React.ReactNode}> = ({ children }
       avatar: photoURL,
       pinnedResources: [],
       rsvpedEvents: [],
+      joinedDate: new Date().toISOString(),
+      lastUpdated: new Date().toISOString(),
     });
     
     return userCredential;
@@ -63,8 +65,13 @@ export const AuthProvider: React.FC<{children: React.ReactNode}> = ({ children }
   
   const updateUserProfile = async (name: string, photoURL: string) => {
     if (auth.currentUser) {
-        await updateProfile(auth.currentUser, { displayName: name, photoURL: photoURL });
-        // Manually trigger a user state update if needed, though onAuthStateChanged should catch it.
+        await updateProfile(auth.currentUser, { 
+          displayName: name, 
+          photoURL: photoURL 
+        });
+        
+        // Force refresh the user object to get updated values
+        await auth.currentUser.reload();
         setUser(auth.currentUser);
     }
   }
