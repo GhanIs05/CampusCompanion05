@@ -398,7 +398,7 @@ export default function EventsPage() {
           </div>
           {/* Only show create button if user has permissions */}
           {user && userPermissions?.canCreateEvents && (
-            <Dialog open={open} onOpenChange={setOpen}>
+            <Dialog open={open} onOpenChange={(newOpen) => !uploading && setOpen(newOpen)}>
               <DialogTrigger asChild>
                 <Button className="bg-accent hover:bg-accent/90 text-accent-foreground shrink-0">
                   <PlusCircle className="mr-2 h-4 w-4" />
