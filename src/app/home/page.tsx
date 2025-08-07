@@ -77,7 +77,7 @@ export default function HomePage() {
                             </CardHeader>
                             <CardContent>
                                 {loading ? (
-                                    <p>Loading discussions...</p>
+                                    <div>Loading discussions...</div>
                                 ) : recentThreads.length > 0 ? (
                                     <ul className="space-y-4">
                                         {recentThreads.map(thread => (
@@ -87,15 +87,23 @@ export default function HomePage() {
                                                     <Link href={`/forums/${thread.id}`} className="font-medium hover:underline">
                                                         {thread.title}
                                                     </Link>
-                                                    <p className="text-sm text-muted-foreground">
-                                                        by {thread.author} &middot; {format(new Date(thread.timestamp), 'MMM d')}
-                                                    </p>
+                                    <span className="text-sm text-muted-foreground">
+                                                        by {thread.author} &middot; {(() => {
+                                                            try {
+                                                                const timestamp = thread.timestamp as any;
+                                                                const date = timestamp?.toDate ? timestamp.toDate() : new Date(timestamp);
+                                                                return format(date, 'MMM d');
+                                                            } catch {
+                                                                return 'Unknown date';
+                                                            }
+                                                        })()}
+                                                    </span>
                                                 </div>
                                             </li>
                                         ))}
                                     </ul>
                                 ) : (
-                                    <p className="text-muted-foreground">No recent discussions.</p>
+                                    <div className="text-muted-foreground">No recent discussions.</div>
                                 )}
                             </CardContent>
                         </Card>
@@ -113,7 +121,7 @@ export default function HomePage() {
                             </CardHeader>
                             <CardContent>
                                {loading ? (
-                                    <p>Loading events...</p>
+                                    <div>Loading events...</div>
                                 ) : upcomingEvents.length > 0 ? (
                                     <ul className="space-y-4">
                                         {upcomingEvents.map(event => (
@@ -123,15 +131,15 @@ export default function HomePage() {
                                                      <Link href={`/events/${event.id}`} className="font-medium hover:underline">
                                                         {event.title}
                                                     </Link>
-                                                    <p className="text-sm text-muted-foreground">
+                                                    <span className="text-sm text-muted-foreground">
                                                         {format(event.date, "PPP")}
-                                                    </p>
+                                                    </span>
                                                 </div>
                                             </li>
                                         ))}
                                     </ul>
                                 ) : (
-                                    <p className="text-muted-foreground">No upcoming events.</p>
+                                    <div className="text-muted-foreground">No upcoming events.</div>
                                 )}
                             </CardContent>
                         </Card>

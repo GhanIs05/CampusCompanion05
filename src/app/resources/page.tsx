@@ -8,24 +8,27 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { resourceLibrary as sampleResourceLibrary } from '@/lib/data';
-import { Download, FileText, Search, Upload, PlusCircle, Loader2, Pin, PinOff } from 'lucide-react';
+import { Download, FileText, Search, Upload, PlusCircle, Loader2, Pin, PinOff, Edit, Trash2, MoreHorizontal } from 'lucide-react';
 import { PageWrapper } from '@/components/PageWrapper';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
-import { collection, addDoc, getDocs, writeBatch, doc, query, where, documentId, getDoc, updateDoc, arrayUnion, arrayRemove } from 'firebase/firestore';
+import { collection, onSnapshot, doc, query, orderBy, updateDoc, arrayUnion, arrayRemove, getDoc } from 'firebase/firestore';
 import { db, storage } from '@/lib/firebase';
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import { format } from 'date-fns';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-
+import { useApiClient } from '@/lib/api';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 
 interface Resource {
     id: string;
     name: string;
     category: string;
     uploader: string;
+    uploaderId: string;
     date: string;
     fileType: string;
     url: string;
@@ -45,56 +48,52 @@ export default function ResourcesPage() {
     const [uploading, setUploading] = useState(false);
     const [searchTerm, setSearchTerm] = useState('');
     const [open, setOpen] = useState(false);
+    const [editOpen, setEditOpen] = useState(false);
+    const [deleteOpen, setDeleteOpen] = useState(false);
+    const [editingResource, setEditingResource] = useState<Resource | null>(null);
+    const [deletingResourceId, setDeletingResourceId] = useState<string | null>(null);
     
     const { user } = useAuth();
     const { toast } = useToast();
+    const apiClient = useApiClient();
 
     const [newResource, setNewResource] = useState({ name: '', category: '' });
+    const [editResource, setEditResource] = useState({ name: '', category: '' });
     const [fileToUpload, setFileToUpload] = useState<File | null>(null);
 
-    const seedDatabase = async () => {
-        const batch = writeBatch(db);
-        sampleResourceLibrary.forEach((resource) => {
-            const { id, ...resourceData } = resource;
-            const resourceRef = doc(collection(db, "resources"));
-            const dataWithUrl = {
-                ...resourceData,
-                url: 'https://firebasestorage.googleapis.com/v0/b/campusconnect-ee87d.appspot.com/o/resources%2Fsample.pdf?alt=media&token=1d74e2a8-1b29-41d4-8398-3499426f4977', // Placeholder URL
-                date: new Date().toISOString(),
-            }
-            batch.set(resourceRef, dataWithUrl);
+    useEffect(() => {
+        const q = query(collection(db, "resources"), orderBy('date', 'desc'));
+        
+        const unsubscribe = onSnapshot(q, (querySnapshot) => {
+          const resourcesData = querySnapshot.docs.map(doc => ({
+            id: doc.id,
+            ...doc.data()
+          } as Resource));
+          
+          setAllResources(resourcesData);
+          setLoading(false);
+        }, (error) => {
+          console.error('Error listening to resources:', error);
+          setLoading(false);
         });
-        await batch.commit();
-    };
 
-    const fetchInitialData = useCallback(async () => {
-        setLoading(true);
-        const resourcesQuerySnapshot = await getDocs(collection(db, "resources"));
-        if (resourcesQuerySnapshot.empty) {
-            await seedDatabase();
-            const newQuerySnapshot = await getDocs(collection(db, "resources"));
-            const resourcesData = newQuerySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Resource));
-            setAllResources(resourcesData);
-        } else {
-            const resourcesData = resourcesQuerySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Resource));
-            setAllResources(resourcesData);
-        }
-
-        if (user) {
-            const userDocRef = doc(db, "users", user.uid);
-            const userDocSnap = await getDoc(userDocRef);
-            if (userDocSnap.exists()) {
-                const userData = userDocSnap.data() as UserProfile;
-                const userPinnedIds = userData.pinnedResources || [];
-                setPinnedResourceIds(userPinnedIds);
-            }
-        }
-        setLoading(false);
-    }, [user]);
+        return () => unsubscribe();
+    }, []);
 
     useEffect(() => {
-        fetchInitialData();
-    }, [fetchInitialData]);
+        const fetchUserProfile = async () => {
+            if (user) {
+                const userDocRef = doc(db, "users", user.uid);
+                const userDocSnap = await getDoc(userDocRef);
+                if (userDocSnap.exists()) {
+                    const userData = userDocSnap.data() as UserProfile;
+                    const userPinnedIds = userData.pinnedResources || [];
+                    setPinnedResourceIds(userPinnedIds);
+                }
+            }
+        };
+        fetchUserProfile();
+    }, [user]);
 
     useEffect(() => {
         if (pinnedResourceIds.length > 0 && allResources.length > 0) {
@@ -138,6 +137,10 @@ export default function ResourcesPage() {
         setNewResource((prev) => ({ ...prev, [field]: value }));
     };
 
+    const handleEditInputChange = (field: string, value: string) => {
+        setEditResource((prev) => ({ ...prev, [field]: value }));
+    };
+
     const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         if (e.target.files && e.target.files[0]) {
             setFileToUpload(e.target.files[0]);
@@ -156,27 +159,88 @@ export default function ResourcesPage() {
         }
         setUploading(true);
         try {
+            // Wait for auth token to ensure user is properly authenticated
+            const authToken = await user.getIdToken(true); // Force refresh token
+            console.log('Auth token exists:', !!authToken);
+            console.log('User uid:', user.uid);
+            console.log('User email:', user.email);
+            
+            // Add a small delay to ensure auth state is synced
+            await new Promise(resolve => setTimeout(resolve, 500));
+            
             const storageRef = ref(storage, `resources/${Date.now()}_${fileToUpload.name}`);
+            console.log('Storage ref path:', storageRef.fullPath);
+            console.log('Storage bucket:', storageRef.bucket);
+            
             await uploadBytes(storageRef, fileToUpload);
             const downloadURL = await getDownloadURL(storageRef);
+            
             const resourceData = {
                 name: newResource.name,
                 category: newResource.category,
-                uploader: user.displayName || 'Campus User',
-                date: new Date().toISOString(),
                 fileType: fileToUpload.type,
                 url: downloadURL,
             };
-            await addDoc(collection(db, "resources"), resourceData);
-            setOpen(false);
-            setNewResource({ name: '', category: '' });
-            setFileToUpload(null);
-            toast({ title: "Resource Uploaded", description: "Your resource has been added to the library." });
-            fetchInitialData(); // Refresh all data
+
+            const response = await apiClient.uploadResource(resourceData);
+            if (response.success) {
+                setOpen(false);
+                setNewResource({ name: '', category: '' });
+                setFileToUpload(null);
+                toast({ title: "Resource Uploaded", description: "Your resource has been added to the library." });
+            } else {
+                toast({ variant: "destructive", title: "Upload Error", description: response.error });
+            }
         } catch (error: any) {
+            console.error('Full upload error:', error);
+            console.error('Error code:', error.code);
+            console.error('Error message:', error.message);
             toast({ variant: "destructive", title: "Upload Error", description: error.message });
         } finally {
             setUploading(false);
+        }
+    };
+
+    const handleEditResourceSubmit = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!editingResource || !editResource.name || !editResource.category) {
+            toast({ variant: "destructive", title: "Missing Fields", description: "Please fill out all required fields." });
+            return;
+        }
+
+        try {
+            const response = await apiClient.updateResource(editingResource.id, {
+                name: editResource.name,
+                category: editResource.category,
+            });
+            
+            if (response.success) {
+                setEditOpen(false);
+                setEditingResource(null);
+                setEditResource({ name: '', category: '' });
+                toast({ title: "Resource Updated", description: "Your resource has been successfully updated." });
+            } else {
+                toast({ variant: "destructive", title: "Error", description: response.error });
+            }
+        } catch (error: any) {
+            toast({ variant: "destructive", title: "Error", description: error.message });
+        }
+    };
+
+    const handleDeleteResource = async () => {
+        if (!deletingResourceId) return;
+
+        try {
+            const response = await apiClient.deleteResource(deletingResourceId);
+            if (response.success) {
+                setDeleteOpen(false);
+                setDeletingResourceId(null);
+                toast({ title: "Resource Deleted", description: "Your resource has been successfully deleted." });
+            } else {
+                toast({ variant: "destructive", title: "Error", description: response.error });
+            }
+        } catch (error: any) {
+            toast({ variant: "destructive", title: "Error", description: error.message });
         }
     };
 
@@ -187,12 +251,29 @@ export default function ResourcesPage() {
         window.open(url, '_blank');
     };
 
+    const openEditDialog = (resource: Resource) => {
+        setEditingResource(resource);
+        setEditResource({
+            name: resource.name,
+            category: resource.category,
+        });
+        setEditOpen(true);
+    };
+
+    const openDeleteDialog = (resourceId: string) => {
+        setDeletingResourceId(resourceId);
+        setDeleteOpen(true);
+    };
+
+    const canEditOrDelete = (resource: Resource) => {
+        return user && resource.uploaderId === user.uid;
+    };
+
     const getFileIcon = (fileType: string) => <FileText className="h-5 w-5 text-primary" />;
 
     const categories = [...new Set(allResources.map(r => r.category).concat(sampleResourceLibrary.map(r => r.category)))];
 
     const resourcesToDisplay = searchTerm ? searchResults : pinnedResources;
-
     return (
         <PageWrapper title="Resource Library">
             <main className="flex-1 overflow-y-auto p-4 md:p-6 lg:p-8">
@@ -261,14 +342,35 @@ export default function ResourcesPage() {
                                                 <TableCell className="hidden lg:table-cell">{resource.uploader}</TableCell>
                                                 <TableCell className="hidden lg:table-cell">{format(new Date(resource.date), "PPP")}</TableCell>
                                                 <TableCell className="text-right">
-                                                    <Button variant="ghost" size="icon" onClick={() => handlePinToggle(resource.id)}>
-                                                        {pinnedResourceIds.includes(resource.id) ? <PinOff className="h-5 w-5 text-primary" /> : <Pin className="h-5 w-5 text-muted-foreground" />}
-                                                        <span className="sr-only">{pinnedResourceIds.includes(resource.id) ? 'Unpin' : 'Pin'}</span>
-                                                    </Button>
-                                                    <Button variant="ghost" size="icon" onClick={(e) => handleDownload(e, resource.url)}>
-                                                        <Download className="h-5 w-5 text-muted-foreground" />
-                                                        <span className="sr-only">Download</span>
-                                                    </Button>
+                                                    <div className="flex items-center justify-end gap-1">
+                                                        <Button variant="ghost" size="icon" onClick={() => handlePinToggle(resource.id)}>
+                                                            {pinnedResourceIds.includes(resource.id) ? <PinOff className="h-4 w-4 text-primary" /> : <Pin className="h-4 w-4 text-muted-foreground" />}
+                                                            <span className="sr-only">{pinnedResourceIds.includes(resource.id) ? 'Unpin' : 'Pin'}</span>
+                                                        </Button>
+                                                        <Button variant="ghost" size="icon" onClick={(e) => handleDownload(e, resource.url)}>
+                                                            <Download className="h-4 w-4 text-muted-foreground" />
+                                                            <span className="sr-only">Download</span>
+                                                        </Button>
+                                                        {canEditOrDelete(resource) && (
+                                                            <DropdownMenu>
+                                                                <DropdownMenuTrigger asChild>
+                                                                    <Button variant="ghost" size="icon">
+                                                                        <MoreHorizontal className="h-4 w-4" />
+                                                                    </Button>
+                                                                </DropdownMenuTrigger>
+                                                                <DropdownMenuContent align="end">
+                                                                    <DropdownMenuItem onClick={() => openEditDialog(resource)}>
+                                                                        <Edit className="h-4 w-4 mr-2" />
+                                                                        Edit
+                                                                    </DropdownMenuItem>
+                                                                    <DropdownMenuItem onClick={() => openDeleteDialog(resource.id)} className="text-destructive">
+                                                                        <Trash2 className="h-4 w-4 mr-2" />
+                                                                        Delete
+                                                                    </DropdownMenuItem>
+                                                                </DropdownMenuContent>
+                                                            </DropdownMenu>
+                                                        )}
+                                                    </div>
                                                 </TableCell>
                                             </TableRow>
                                         ))
@@ -289,9 +391,59 @@ export default function ResourcesPage() {
                         )}
                     </CardContent>
                 </Card>
+
+                {/* Edit Dialog */}
+                <Dialog open={editOpen} onOpenChange={setEditOpen}>
+                    <DialogContent className="sm:max-w-[425px]">
+                        <form onSubmit={handleEditResourceSubmit}>
+                            <DialogHeader>
+                                <DialogTitle className="font-headline">Edit Resource</DialogTitle>
+                                <DialogDescription>Update the resource information.</DialogDescription>
+                            </DialogHeader>
+                            <div className="grid gap-4 py-4">
+                                <div className="space-y-2">
+                                    <Label htmlFor="edit-name">Resource Name</Label>
+                                    <Input id="edit-name" value={editResource.name} onChange={(e) => handleEditInputChange('name', e.target.value)} placeholder="e.g., Quantum Mechanics Lecture Notes" />
+                                </div>
+                                <div className="space-y-2">
+                                    <Label htmlFor="edit-category">Category</Label>
+                                    <Select value={editResource.category} onValueChange={(value) => handleEditInputChange('category', value)}>
+                                        <SelectTrigger id="edit-category">
+                                            <SelectValue placeholder="Select a category" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            {[...new Set(categories)].map(cat => <SelectItem key={cat} value={cat}>{cat}</SelectItem>)}
+                                            <SelectItem value="Other">Other</SelectItem>
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+                            </div>
+                            <DialogFooter>
+                                <Button type="button" variant="outline" onClick={() => setEditOpen(false)}>Cancel</Button>
+                                <Button type="submit" className="bg-accent hover:bg-accent/90 text-accent-foreground">Update Resource</Button>
+                            </DialogFooter>
+                        </form>
+                    </DialogContent>
+                </Dialog>
+
+                {/* Delete Confirmation Dialog */}
+                <AlertDialog open={deleteOpen} onOpenChange={setDeleteOpen}>
+                    <AlertDialogContent>
+                        <AlertDialogHeader>
+                            <AlertDialogTitle>Delete Resource</AlertDialogTitle>
+                            <AlertDialogDescription>
+                                Are you sure you want to delete this resource? This action cannot be undone and the file will be permanently removed.
+                            </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                            <AlertDialogCancel onClick={() => setDeleteOpen(false)}>Cancel</AlertDialogCancel>
+                            <AlertDialogAction onClick={handleDeleteResource} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                                Delete
+                            </AlertDialogAction>
+                        </AlertDialogFooter>
+                    </AlertDialogContent>
+                </AlertDialog>
             </main>
         </PageWrapper>
     );
 }
-
-    

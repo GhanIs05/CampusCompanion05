@@ -1,7 +1,7 @@
 // src/components/AdminPanel.tsx
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -21,7 +21,11 @@ import {
   Lock, 
   Unlock,
   Eye,
-  Settings
+  Settings,
+  CheckCircle,
+  XCircle,
+  Clock,
+  UserPlus
 } from 'lucide-react';
 
 interface ModerationItem {
@@ -34,8 +38,24 @@ interface ModerationItem {
   reports?: number;
 }
 
+interface OrganizerRequest {
+  id: string;
+  userId: string;
+  userName: string;
+  userEmail: string;
+  organizationType: string;
+  organizationName: string;
+  role: string;
+  justification: string;
+  status: 'pending' | 'approved' | 'rejected';
+  createdAt: any;
+  reviewedAt?: any;
+  reviewedBy?: string;
+  reviewerNotes?: string;
+}
+
 export const AdminPanel: React.FC = () => {
-  const { userProfile, canModerate, isAdmin } = useAuth();
+  const { userProfile, canModerate, isAdmin, user } = useAuth();
   const { toast } = useToast();
   const apiClient = useApiClient();
   
@@ -59,6 +79,80 @@ export const AdminPanel: React.FC = () => {
       reports: 0
     }
   ]);
+
+  const [organizerRequests, setOrganizerRequests] = useState<OrganizerRequest[]>([]);
+  const [loadingRequests, setLoadingRequests] = useState(true);
+
+  // Fetch organizer requests on component mount
+  useEffect(() => {
+    fetchOrganizerRequests();
+  }, [user]);
+
+  const fetchOrganizerRequests = async () => {
+    if (!user || !canModerate()) return;
+    
+    try {
+      setLoadingRequests(true);
+      const response = await fetch('/api/admin/organizer-requests', {
+        headers: {
+          'x-user-id': user.uid
+        },
+        credentials: 'include'
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        setOrganizerRequests(data.requests || []);
+      } else {
+        console.error('Failed to fetch organizer requests');
+      }
+    } catch (error) {
+      console.error('Error fetching organizer requests:', error);
+    } finally {
+      setLoadingRequests(false);
+    }
+  };
+
+  const handleOrganizerRequestAction = async (requestId: string, action: 'approve' | 'reject', notes?: string) => {
+    try {
+      const response = await fetch('/api/admin/organizer-requests', {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-user-id': user?.uid || ''
+        },
+        credentials: 'include',
+        body: JSON.stringify({
+          requestId,
+          action,
+          reviewerNotes: notes || ''
+        })
+      });
+
+      if (response.ok) {
+        toast({
+          title: 'Success',
+          description: `Request ${action}d successfully`,
+        });
+        
+        // Refresh the requests list
+        fetchOrganizerRequests();
+      } else {
+        const error = await response.json();
+        toast({
+          variant: 'destructive',
+          title: 'Error',
+          description: error.error || `Failed to ${action} request`,
+        });
+      }
+    } catch (error) {
+      toast({
+        variant: 'destructive',
+        title: 'Error',
+        description: 'An unexpected error occurred',
+      });
+    }
+  };
 
   const handleModerateAction = async (itemId: string, action: string) => {
     try {
@@ -126,13 +220,120 @@ export const AdminPanel: React.FC = () => {
         </p>
       </div>
 
-      <Tabs defaultValue="moderation" className="w-full">
-        <TabsList className="grid w-full grid-cols-4">
+      <Tabs defaultValue="organizer-requests" className="w-full">
+        <TabsList className="grid w-full grid-cols-5">
+          <TabsTrigger value="organizer-requests">Organizer Requests</TabsTrigger>
           <TabsTrigger value="moderation">Moderation</TabsTrigger>
           <TabsTrigger value="users">Users</TabsTrigger>
           <TabsTrigger value="analytics">Analytics</TabsTrigger>
           <TabsTrigger value="settings" disabled={!isAdmin()}>Settings</TabsTrigger>
         </TabsList>
+
+        <TabsContent value="organizer-requests" className="space-y-4">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <UserPlus className="w-5 h-5" />
+                Organizer Requests
+              </CardTitle>
+              <CardDescription>
+                Review and approve requests for event organizer permissions
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              {loadingRequests ? (
+                <div className="flex items-center justify-center py-8">
+                  <Clock className="w-6 h-6 animate-spin mr-2" />
+                  Loading requests...
+                </div>
+              ) : organizerRequests.length === 0 ? (
+                <div className="text-center py-8 text-gray-500">
+                  No organizer requests found
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {organizerRequests.map((request) => (
+                    <div
+                      key={request.id}
+                      className="border rounded-lg p-4 space-y-3"
+                    >
+                      <div className="flex items-start justify-between">
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2 mb-2">
+                            <h4 className="font-medium">{request.userName}</h4>
+                            <Badge 
+                              variant={
+                                request.status === 'pending' ? 'default' : 
+                                request.status === 'approved' ? 'default' : 
+                                'destructive'
+                              }
+                              className={
+                                request.status === 'pending' ? 'bg-yellow-500' :
+                                request.status === 'approved' ? 'bg-green-500' :
+                                'bg-red-500'
+                              }
+                            >
+                              {request.status}
+                            </Badge>
+                          </div>
+                          <p className="text-sm text-gray-600 mb-2">
+                            {request.userEmail} • {request.role} at {request.organizationName}
+                          </p>
+                          <p className="text-sm text-gray-700 mb-2">
+                            <strong>Organization Type:</strong> {request.organizationType.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase())}
+                          </p>
+                          <p className="text-sm text-gray-700">
+                            <strong>Justification:</strong> {request.justification}
+                          </p>
+                          {request.reviewerNotes && (
+                            <p className="text-sm text-blue-700 mt-2">
+                              <strong>Reviewer Notes:</strong> {request.reviewerNotes}
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                      
+                      {request.status === 'pending' && (
+                        <div className="flex gap-2 pt-2">
+                          <ProtectedButton
+                            onClick={() => handleOrganizerRequestAction(request.id, 'approve')}
+                            variant="default"
+                            size="sm"
+                            requiredRoles={['Admin', 'Moderator']}
+                            className="bg-green-600 hover:bg-green-700"
+                          >
+                            <CheckCircle className="w-4 h-4 mr-1" />
+                            Approve
+                          </ProtectedButton>
+                          
+                          <ProtectedButton
+                            onClick={() => handleOrganizerRequestAction(request.id, 'reject', 'Request does not meet requirements')}
+                            variant="destructive"
+                            size="sm"
+                            requiredRoles={['Admin', 'Moderator']}
+                          >
+                            <XCircle className="w-4 h-4 mr-1" />
+                            Reject
+                          </ProtectedButton>
+                        </div>
+                      )}
+                      
+                      <div className="text-xs text-gray-500 pt-2 border-t">
+                        Submitted: {new Date(request.createdAt?.seconds * 1000 || Date.now()).toLocaleDateString()}
+                        {request.reviewedAt && (
+                          <span className="ml-4">
+                            Reviewed: {new Date(request.reviewedAt?.seconds * 1000).toLocaleDateString()}
+                            {request.reviewedBy && ` by ${request.reviewedBy}`}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
 
         <TabsContent value="moderation" className="space-y-4">
           <Card>

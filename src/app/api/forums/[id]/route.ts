@@ -2,6 +2,122 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { adminAuth, adminDb, checkUserRole } from '@/lib/auth-admin';
 
+export async function GET(
+  request: NextRequest,
+  { params }: { params: { id: string } }
+) {
+  try {
+    const threadDoc = await adminDb.collection('forumThreads').doc(params.id).get();
+    
+    if (!threadDoc.exists) {
+      return NextResponse.json(
+        { error: 'Thread not found' },
+        { status: 404 }
+      );
+    }
+
+    return NextResponse.json({
+      id: threadDoc.id,
+      ...threadDoc.data()
+    });
+
+  } catch (error) {
+    console.error('Error fetching thread:', error);
+    return NextResponse.json(
+      { error: 'Internal server error' },
+      { status: 500 }
+    );
+  }
+}
+
+export async function PUT(
+  request: NextRequest,
+  { params }: { params: { id: string } }
+) {
+  try {
+    // Extract token
+    const token = request.cookies.get('auth-token')?.value || 
+                  request.headers.get('authorization')?.replace('Bearer ', '');
+
+    if (!token) {
+      return NextResponse.json(
+        { error: 'Authentication required' },
+        { status: 401 }
+      );
+    }
+
+    // Verify the token
+    const decodedToken = await adminAuth.verifyIdToken(token);
+    if (!decodedToken) {
+      return NextResponse.json(
+        { error: 'Invalid token' },
+        { status: 401 }
+      );
+    }
+
+    // Get the thread to check ownership
+    const threadDoc = await adminDb.collection('forumThreads').doc(params.id).get();
+    if (!threadDoc.exists) {
+      return NextResponse.json(
+        { error: 'Thread not found' },
+        { status: 404 }
+      );
+    }
+
+    const threadData = threadDoc.data();
+    if (!threadData) {
+      return NextResponse.json(
+        { error: 'Thread data not found' },
+        { status: 404 }
+      );
+    }
+
+    const isOwner = threadData.authorId === decodedToken.uid;
+    const isAdmin = await checkUserRole(decodedToken.uid, ['Admin', 'Moderator']);
+
+    if (!isOwner && !isAdmin) {
+      return NextResponse.json(
+        { error: 'Permission denied. You can only edit your own threads.' },
+        { status: 403 }
+      );
+    }
+
+    // Parse the request body
+    const { title, course, tags, body } = await request.json();
+
+    if (!title || !course || !body) {
+      return NextResponse.json(
+        { error: 'Missing required fields' },
+        { status: 400 }
+      );
+    }
+
+    // Update the thread
+    const updateData = {
+      title,
+      course,
+      tags: tags || [],
+      body,
+      updatedAt: new Date().toISOString(),
+      edited: true
+    };
+
+    await adminDb.collection('forumThreads').doc(params.id).update(updateData);
+
+    return NextResponse.json({
+      success: true,
+      message: 'Thread updated successfully'
+    });
+
+  } catch (error) {
+    console.error('Error updating thread:', error);
+    return NextResponse.json(
+      { error: 'Internal server error' },
+      { status: 500 }
+    );
+  }
+}
+
 export async function DELETE(
   request: NextRequest,
   { params }: { params: { id: string } }
@@ -27,24 +143,57 @@ export async function DELETE(
       );
     }
 
-    // Check if user has admin or moderator role
-    const hasPermission = await checkUserRole(decodedToken.uid, ['Admin', 'Moderator']);
-    if (!hasPermission) {
+    // Get the thread to check ownership
+    const threadDoc = await adminDb.collection('forumThreads').doc(params.id).get();
+    if (!threadDoc.exists) {
       return NextResponse.json(
-        { error: 'Insufficient permissions. Admin or Moderator role required.' },
+        { error: 'Thread not found' },
+        { status: 404 }
+      );
+    }
+
+    const threadData = threadDoc.data();
+    if (!threadData) {
+      return NextResponse.json(
+        { error: 'Thread data not found' },
+        { status: 404 }
+      );
+    }
+
+    const isOwner = threadData.authorId === decodedToken.uid;
+    const isAdmin = await checkUserRole(decodedToken.uid, ['Admin', 'Moderator']);
+
+    if (!isOwner && !isAdmin) {
+      return NextResponse.json(
+        { error: 'Permission denied. You can only delete your own threads.' },
         { status: 403 }
       );
     }
 
-    // Delete the forum thread
-    await adminDb.collection('forumThreads').doc(params.id).delete();
+    // Delete the thread and all its replies
+    const batch = adminDb.batch();
+    
+    // Delete the thread
+    batch.delete(adminDb.collection('forumThreads').doc(params.id));
+    
+    // Delete all replies to this thread
+    const repliesSnapshot = await adminDb.collection('forumReplies')
+      .where('threadId', '==', params.id)
+      .get();
+    
+    repliesSnapshot.docs.forEach(replyDoc => {
+      batch.delete(replyDoc.ref);
+    });
+    
+    await batch.commit();
 
-    return NextResponse.json(
-      { success: true, message: 'Forum thread deleted successfully' }
-    );
+    return NextResponse.json({
+      success: true,
+      message: 'Thread and all replies deleted successfully'
+    });
 
   } catch (error) {
-    console.error('Error deleting forum thread:', error);
+    console.error('Error deleting thread:', error);
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }

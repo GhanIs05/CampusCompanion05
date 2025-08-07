@@ -4,7 +4,7 @@
 import { usePathname } from 'next/navigation';
 import Link from 'next/link';
 import { SidebarGroup, SidebarGroupLabel, SidebarMenu, SidebarMenuItem, SidebarMenuButton, SidebarSeparator } from '@/components/ui/sidebar';
-import { MessageSquare, FolderKanban, Calendar, User, Home, Shield } from 'lucide-react';
+import { MessageSquare, FolderKanban, Calendar, User, Home, Shield, Settings } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { ProtectedAction } from '@/components/ProtectedActions';
 
@@ -21,6 +21,10 @@ const userNavItems = [
 
 const adminNavItems = [
   { href: '/admin', label: 'Admin Panel', icon: Shield },
+];
+
+const devNavItems = [
+  { href: '/dev', label: 'Dev Tools', icon: Settings },
 ];
 
 export function SidebarNav() {
@@ -90,6 +94,30 @@ export function SidebarNav() {
             </SidebarMenu>
         </SidebarGroup>
       </ProtectedAction>
+      
+      {/* Development tools - only show in development */}
+      {process.env.NODE_ENV === 'development' && (
+        <>
+          <SidebarSeparator />
+          <SidebarGroup>
+              <SidebarGroupLabel>Development</SidebarGroupLabel>
+              <SidebarMenu>
+              {devNavItems.map((item) => (
+                  <SidebarMenuItem key={item.href}>
+                  <Link href={item.href} passHref>
+                      <SidebarMenuButton asChild isActive={isActive(item.href)} tooltip={item.label}>
+                      <div>
+                          <item.icon />
+                          <span>{item.label}</span>
+                      </div>
+                      </SidebarMenuButton>
+                  </Link>
+                  </SidebarMenuItem>
+              ))}
+              </SidebarMenu>
+          </SidebarGroup>
+        </>
+      )}
     </>
   );
 }

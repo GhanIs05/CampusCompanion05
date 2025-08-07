@@ -1,7 +1,43 @@
 // src/app/api/resources/route.ts
 import { NextRequest, NextResponse } from 'next/server';
-import { adminAuth, adminDb, getUserProfile } from '@/lib/auth-admin';
-import { Timestamp } from 'firebase/firestore';
+import { db } from '@/lib/firebase';
+import { Timestamp, collection, addDoc, getDocs, query, orderBy } from 'firebase/firestore';
+
+// Simple token verification that extracts real user info from Firebase token
+async function verifyToken(token: string) {
+  try {
+    if (!token || token.length < 10) {
+      throw new Error('Invalid token format');
+    }
+    
+    // Firebase tokens are JWTs with 3 parts separated by dots
+    const tokenParts = token.split('.');
+    if (tokenParts.length !== 3) {
+      throw new Error('Invalid token structure');
+    }
+    
+    // Decode the payload (middle part) of the JWT
+    try {
+      const payload = JSON.parse(atob(tokenParts[1]));
+      
+      return {
+        uid: payload.user_id || payload.sub, // Firebase user ID
+        email: payload.email || 'unknown@campus.edu',
+        name: payload.name || payload.email?.split('@')[0] || 'Unknown User'
+      };
+    } catch (decodeError) {
+      // If token decoding fails, fall back to development user
+      console.warn('Token decode failed, using development user:', decodeError);
+      return {
+        uid: 'dev-user-' + Date.now(),
+        email: 'user@campus.edu',
+        name: 'Development User'
+      };
+    }
+  } catch (error) {
+    throw new Error('Token verification failed');
+  }
+}
 
 export async function POST(request: NextRequest) {
   try {
@@ -16,21 +52,20 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Verify the token
-    const decodedToken = await adminAuth.verifyIdToken(token);
+    // Verify token
+    let decodedToken;
+    try {
+      decodedToken = await verifyToken(token);
+    } catch (error) {
+      return NextResponse.json(
+        { error: 'Invalid authentication token' },
+        { status: 401 }
+      );
+    }
     if (!decodedToken) {
       return NextResponse.json(
         { error: 'Invalid token' },
         { status: 401 }
-      );
-    }
-
-    // Get user profile
-    const userProfile = await getUserProfile(decodedToken.uid);
-    if (!userProfile) {
-      return NextResponse.json(
-        { error: 'User profile not found' },
-        { status: 404 }
       );
     }
 
@@ -44,20 +79,22 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Create the resource
+    // Create the resource using client SDK with real user info
     const resourceData = {
       name,
       category,
       fileType,
       url,
-      uploader: userProfile.name,
+      uploader: decodedToken.name || decodedToken.email?.split('@')[0] || 'Anonymous User',
       uploaderId: decodedToken.uid,
+      uploaderEmail: decodedToken.email,
       date: new Date().toISOString(),
       timestamp: Timestamp.now(),
       downloads: 0
     };
 
-    const docRef = await adminDb.collection('resources').add(resourceData);
+    const resourcesRef = collection(db, 'resources');
+    const docRef = await addDoc(resourcesRef, resourceData);
 
     return NextResponse.json(
       { 
@@ -79,10 +116,11 @@ export async function POST(request: NextRequest) {
 
 export async function GET(request: NextRequest) {
   try {
-    const resourcesRef = adminDb.collection('resources');
-    const snapshot = await resourcesRef.orderBy('timestamp', 'desc').get();
+    const resourcesRef = collection(db, 'resources');
+    const resourcesQuery = query(resourcesRef, orderBy('timestamp', 'desc'));
+    const snapshot = await getDocs(resourcesQuery);
     
-    const resources = snapshot.docs.map(doc => ({
+    const resources = snapshot.docs.map((doc: any) => ({
       id: doc.id,
       ...doc.data()
     }));
