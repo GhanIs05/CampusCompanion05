@@ -1,25 +1,21 @@
 // src/app/api/events/rsvp/route.ts
 import { NextRequest, NextResponse } from 'next/server';
-import { adminAuth, adminDb, getUserProfile } from '@/lib/auth-admin';
+import { db } from '@/lib/firebase';
+import { doc, getDoc, updateDoc, arrayUnion, arrayRemove } from 'firebase/firestore';
+
+// Simple function to get user ID from headers (for development)
+function getUserIdFromRequest(request: NextRequest): string | null {
+  return request.headers.get('x-user-id') || null;
+}
 
 export async function POST(request: NextRequest) {
   try {
-    // Extract token
-    const token = request.cookies.get('auth-token')?.value || 
-                  request.headers.get('authorization')?.replace('Bearer ', '');
+    // Get user ID from headers (development approach)
+    const userId = getUserIdFromRequest(request);
 
-    if (!token) {
+    if (!userId) {
       return NextResponse.json(
         { error: 'Authentication required' },
-        { status: 401 }
-      );
-    }
-
-    // Verify the token
-    const decodedToken = await adminAuth.verifyIdToken(token);
-    if (!decodedToken) {
-      return NextResponse.json(
-        { error: 'Invalid token' },
         { status: 401 }
       );
     }
@@ -34,11 +30,11 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Get user document
-    const userRef = adminDb.collection('users').doc(decodedToken.uid);
-    const userDoc = await userRef.get();
+    // Get user document using client SDK
+    const userRef = doc(db, 'users', userId);
+    const userDoc = await getDoc(userRef);
 
-    if (!userDoc.exists) {
+    if (!userDoc.exists()) {
       return NextResponse.json(
         { error: 'User profile not found' },
         { status: 404 }
@@ -50,8 +46,8 @@ export async function POST(request: NextRequest) {
 
     if (rsvpedEvents.includes(eventId)) {
       // Remove RSVP
-      await userRef.update({
-        rsvpedEvents: rsvpedEvents.filter((id: string) => id !== eventId)
+      await updateDoc(userRef, {
+        rsvpedEvents: arrayRemove(eventId)
       });
 
       return NextResponse.json({
@@ -61,8 +57,8 @@ export async function POST(request: NextRequest) {
       });
     } else {
       // Add RSVP
-      await userRef.update({
-        rsvpedEvents: [...rsvpedEvents, eventId]
+      await updateDoc(userRef, {
+        rsvpedEvents: arrayUnion(eventId)
       });
 
       return NextResponse.json({

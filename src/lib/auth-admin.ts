@@ -9,26 +9,30 @@ let db: Firestore;
 
 if (!getApps().length) {
   try {
-    // In development, you might not have service account keys
-    // In that case, the admin features won't work but the app will still run
+    // For development: Use Application Default Credentials or emulator
+    const projectId = process.env.FIREBASE_PROJECT_ID || 'campusconnect-ee87d';
+    
+    // Check if we have service account credentials
     if (process.env.FIREBASE_CLIENT_EMAIL && process.env.FIREBASE_PRIVATE_KEY) {
+      console.log('Initializing Firebase Admin with service account credentials');
       app = initializeApp({
         credential: cert({
-          projectId: process.env.FIREBASE_PROJECT_ID || 'campusconnect-ee87d',
+          projectId: projectId,
           clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
           privateKey: process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, '\n'),
         }),
-        projectId: process.env.FIREBASE_PROJECT_ID || 'campusconnect-ee87d',
+        projectId: projectId,
       });
     } else {
-      // Fallback initialization without credentials (for development)
+      console.log('Initializing Firebase Admin with default credentials for development');
+      // Initialize without explicit credentials - will use default credentials or emulator
       app = initializeApp({
-        projectId: process.env.FIREBASE_PROJECT_ID || 'campusconnect-ee87d',
+        projectId: projectId,
       });
     }
   } catch (error) {
-    console.warn('Firebase Admin initialization failed:', error);
-    // Create a mock app for development
+    console.warn('Firebase Admin initialization failed, using fallback:', error);
+    // Create a basic app for development
     app = initializeApp({
       projectId: process.env.FIREBASE_PROJECT_ID || 'campusconnect-ee87d',
     });

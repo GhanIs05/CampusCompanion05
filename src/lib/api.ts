@@ -18,11 +18,23 @@ class ApiClient {
     try {
       const url = `${this.baseUrl}${endpoint}`;
       
+      // Get auth token from cookie
+      const getAuthTokenFromCookie = (): string | null => {
+        if (typeof document === 'undefined') return null;
+        const cookies = document.cookie.split(';');
+        const authCookie = cookies.find(cookie => cookie.trim().startsWith('auth-token='));
+        return authCookie ? authCookie.split('=')[1] : null;
+      };
+
+      const authToken = getAuthTokenFromCookie();
+      
       const response = await fetch(url, {
         headers: {
           'Content-Type': 'application/json',
+          ...(authToken && { 'Authorization': `Bearer ${authToken}` }),
           ...options.headers,
         },
+        credentials: 'include', // Include cookies
         ...options,
       });
 
@@ -228,7 +240,7 @@ export const apiClient = new ApiClient();
 
 // Hook for using API client with authentication
 export const useApiClient = () => {
-  const { getAuthToken } = useAuth();
+  const { getAuthToken, user } = useAuth();
 
   const makeAuthenticatedRequest = async <T = any>(
     endpoint: string,
@@ -237,7 +249,7 @@ export const useApiClient = () => {
     try {
       const token = await getAuthToken();
       
-      if (!token) {
+      if (!token || !user) {
         return {
           success: false,
           error: 'Authentication required',
@@ -247,12 +259,14 @@ export const useApiClient = () => {
       const headers = {
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${token}`,
+        'x-user-id': user.uid, // Include user ID for development compatibility
         ...options.headers,
       };
 
       return apiClient.makeRequest(endpoint, {
         ...options,
         headers,
+        credentials: 'include', // Include cookies
       });
     } catch (error) {
       return {

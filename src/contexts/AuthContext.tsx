@@ -61,13 +61,29 @@ export const AuthProvider: React.FC<{children: React.ReactNode}> = ({ children }
           
           if (userDocSnap.exists()) {
             setUserProfile(userDocSnap.data() as UserProfile);
+          } else {
+            // Create user document if it doesn't exist
+            console.log('Creating user document for:', user.email);
+            const newUserProfile: UserProfile = {
+              name: user.displayName || user.email?.split('@')[0] || 'User',
+              email: user.email || '',
+              role: 'Student',
+              bio: '',
+              avatar: user.photoURL || 'https://placehold.co/100x100.png',
+              pinnedResources: [],
+              rsvpedEvents: []
+            };
+            
+            await setDoc(userDocRef, newUserProfile);
+            setUserProfile(newUserProfile);
+            console.log('User document created successfully');
           }
           
           // Store auth token in cookie for API requests
           const token = await user.getIdToken();
           document.cookie = `auth-token=${token}; path=/; max-age=3600; secure; samesite=strict`;
         } catch (error) {
-          console.error('Error fetching user profile:', error);
+          console.error('Error fetching/creating user profile:', error);
         }
       } else {
         setUserProfile(null);
