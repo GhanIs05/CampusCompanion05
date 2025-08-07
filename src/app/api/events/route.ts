@@ -125,7 +125,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Parse the request body
-    const { title, description, date, location, category, capacity } = await request.json();
+    const { title, description, date, location, category, capacity, imageUrl, extendedDescription } = await request.json();
 
     if (!title || !description || !date || !location) {
       return NextResponse.json(
@@ -147,6 +147,8 @@ export async function POST(request: NextRequest) {
     const eventData = {
       title,
       description,
+      extendedDescription: extendedDescription || null,
+      imageUrl: imageUrl || null,
       date: eventDate.toISOString(),
       location,
       category: category || 'General',

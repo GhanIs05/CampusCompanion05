@@ -171,6 +171,8 @@ class ApiClient {
     location: string;
     category?: string;
     capacity?: number;
+    imageUrl?: string;
+    extendedDescription?: string;
   }) {
     return this.makeRequest('/events', {
       method: 'POST',

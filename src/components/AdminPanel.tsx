@@ -990,25 +990,6 @@ export const AdminPanel: React.FC = () => {
             </div>
           )}
         </TabsContent>
-
-        <ProtectedAction requiredRoles={['Admin']}>
-          <TabsContent value="settings" className="space-y-4">
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Settings className="w-5 h-5" />
-                  System Settings
-                </CardTitle>
-                <CardDescription>
-                  Configure system-wide settings and permissions
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <p className="text-gray-600">Settings panel coming soon...</p>
-              </CardContent>
-            </Card>
-          </TabsContent>
-        </ProtectedAction>
       </Tabs>
     </div>
   );

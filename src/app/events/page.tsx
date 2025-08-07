@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Calendar } from '@/components/ui/calendar';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { events as sampleEvents } from '@/lib/data';
-import { CheckCircle, Clock, PartyPopper, PlusCircle, Edit, Trash2, MoreHorizontal, MapPin, Users } from 'lucide-react';
+import { CheckCircle, Clock, PartyPopper, PlusCircle, Edit, Trash2, MoreHorizontal, MapPin, Users, Upload, X } from 'lucide-react';
 import { format, isFuture, isSameDay } from 'date-fns';
 import Link from 'next/link';
 import { PageWrapper } from '@/components/PageWrapper';
@@ -18,6 +18,8 @@ import { useApiClient } from '@/lib/api';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
+import { uploadEventImage, validateImageFile } from '@/lib/storage';
+import Image from 'next/image';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
@@ -29,6 +31,8 @@ interface Event {
     id: string;
     title: string;
     description: string;
+    extendedDescription?: string;
+    imageUrl?: string;
     date: string;
     location: string;
     category: string;
@@ -77,7 +81,12 @@ export default function EventsPage() {
     location: '',
     category: 'General',
     capacity: '',
+    extendedDescription: '',
   });
+
+  const [selectedImage, setSelectedImage] = useState<File | null>(null);
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const [uploading, setUploading] = useState(false);
 
   const [editEvent, setEditEvent] = useState({
     title: '',
@@ -86,6 +95,7 @@ export default function EventsPage() {
     location: '',
     category: 'General',
     capacity: '',
+    extendedDescription: '',
   });
 
   useEffect(() => {
@@ -164,6 +174,35 @@ export default function EventsPage() {
     setNewEvent((prev) => ({ ...prev, [field]: value }));
   };
 
+  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const validationError = validateImageFile(file);
+    if (validationError) {
+      toast({
+        variant: "destructive",
+        title: "Invalid Image",
+        description: validationError,
+      });
+      return;
+    }
+
+    setSelectedImage(file);
+    
+    // Create preview
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      setImagePreview(e.target?.result as string);
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const removeImage = () => {
+    setSelectedImage(null);
+    setImagePreview(null);
+  };
+
   const handleEditInputChange = (field: string, value: string) => {
     setEditEvent((prev) => ({ ...prev, [field]: value }));
   };
@@ -183,20 +222,32 @@ export default function EventsPage() {
         return;
     }
 
-    const eventData = {
-      title: newEvent.title,
-      description: newEvent.description,
-      date: newEvent.date,
-      location: newEvent.location,
-      category: newEvent.category,
-      capacity: newEvent.capacity ? parseInt(newEvent.capacity) : undefined,
-    };
+    setUploading(true);
+    let imageUrl = undefined;
 
     try {
-        const response = await apiClient.createEvent(eventData);
-        if (response.success) {
-          setOpen(false);
-          setNewEvent({ title: '', description: '', date: '', location: '', category: 'General', capacity: '' });
+      // Upload image if selected
+      if (selectedImage) {
+        imageUrl = await uploadEventImage(selectedImage);
+      }
+
+      const eventData = {
+        title: newEvent.title,
+        description: newEvent.description,
+        date: newEvent.date,
+        location: newEvent.location,
+        category: newEvent.category,
+        capacity: newEvent.capacity ? parseInt(newEvent.capacity) : undefined,
+        imageUrl: imageUrl,
+        extendedDescription: newEvent.extendedDescription || undefined,
+      };
+
+      const response = await apiClient.createEvent(eventData);
+      if (response.success) {
+        setOpen(false);
+        setNewEvent({ title: '', description: '', date: '', location: '', category: 'General', capacity: '', extendedDescription: '' });
+        setSelectedImage(null);
+        setImagePreview(null);
           toast({
               title: "Event Created",
               description: "Your event has been successfully created.",
@@ -206,10 +257,10 @@ export default function EventsPage() {
         }
     } catch(error: any) {
         toast({ variant: "destructive", title: "Error", description: error.message});
+    } finally {
+        setUploading(false);
     }
-  };
-
-  const handleEditEventSubmit = async (e: React.FormEvent) => {
+  };  const handleEditEventSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!editingEvent || !editEvent.title || !editEvent.description || !editEvent.date || !editEvent.location) {
         toast({
@@ -234,7 +285,7 @@ export default function EventsPage() {
         if (response.success) {
           setEditOpen(false);
           setEditingEvent(null);
-          setEditEvent({ title: '', description: '', date: '', location: '', category: 'General', capacity: '' });
+          setEditEvent({ title: '', description: '', date: '', location: '', category: 'General', capacity: '', extendedDescription: '' });
           toast({
               title: "Event Updated",
               description: "Your event has been successfully updated.",
@@ -309,6 +360,7 @@ export default function EventsPage() {
       location: event.location,
       category: event.category,
       capacity: event.capacity ? event.capacity.toString() : '',
+      extendedDescription: event.extendedDescription || '',
     });
     setEditOpen(true);
   };
@@ -381,6 +433,56 @@ export default function EventsPage() {
                         className="min-h-[100px]" 
                       />
                     </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="extendedDescription">Extended Description (Optional)</Label>
+                      <Textarea 
+                        id="extendedDescription" 
+                        value={newEvent.extendedDescription} 
+                        onChange={(e) => handleInputChange('extendedDescription', e.target.value)} 
+                        placeholder="Add more detailed information about your event..." 
+                        className="min-h-[120px]" 
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="image">Event Image (Optional)</Label>
+                      {!imagePreview ? (
+                        <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center">
+                          <Upload className="mx-auto h-12 w-12 text-gray-400" />
+                          <div className="mt-2">
+                            <Label htmlFor="image-upload" className="cursor-pointer">
+                              <span className="text-sm text-gray-600">Click to upload an image</span>
+                              <Input
+                                id="image-upload"
+                                type="file"
+                                accept="image/*"
+                                className="hidden"
+                                onChange={handleImageChange}
+                              />
+                            </Label>
+                          </div>
+                          <p className="text-xs text-gray-500 mt-1">PNG, JPG, WEBP up to 5MB</p>
+                        </div>
+                      ) : (
+                        <div className="relative">
+                          <Image
+                            src={imagePreview}
+                            alt="Preview"
+                            width={400}
+                            height={200}
+                            className="rounded-lg object-cover w-full h-48"
+                          />
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            className="absolute top-2 right-2"
+                            onClick={removeImage}
+                          >
+                            <X className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      )}
+                    </div>
                     <div className="grid grid-cols-2 gap-4">
                       <div className="space-y-2">
                         <Label htmlFor="date">Date & Time</Label>
@@ -429,8 +531,12 @@ export default function EventsPage() {
                     </div>
                   </div>
                   <DialogFooter>
-                    <Button type="submit" className="bg-accent hover:bg-accent/90 text-accent-foreground">
-                      Create Event
+                    <Button 
+                      type="submit" 
+                      className="bg-accent hover:bg-accent/90 text-accent-foreground"
+                      disabled={uploading}
+                    >
+                      {uploading ? 'Creating Event...' : 'Create Event'}
                     </Button>
                   </DialogFooter>
                 </form>

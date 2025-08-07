@@ -5,24 +5,70 @@ import { AppHeader } from '@/components/AppHeader';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { events } from '@/lib/data';
 import { Calendar, CheckCircle, Clock, MapPin, Tag } from 'lucide-react';
 import { useParams } from 'next/navigation';
 import { format } from 'date-fns';
 import Image from 'next/image';
 import { PageWrapper } from '@/components/PageWrapper';
+import { useEffect, useState } from 'react';
+
+interface Event {
+  id: string;
+  title: string;
+  description: string;
+  extendedDescription?: string;
+  imageUrl?: string;
+  date: string;
+  location: string;
+  category: string;
+  organizerId: string;
+  capacity?: number;
+  registeredUsers?: string[];
+}
 
 export default function EventDetailPage() {
     const params = useParams();
     const eventId = params.id as string;
-    
-    const event = events.find(e => e.id === eventId);
+    const [event, setEvent] = useState<Event | null>(null);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState<string | null>(null);
 
-    if (!event) {
+    useEffect(() => {
+        const fetchEvent = async () => {
+            try {
+                const response = await fetch(`/api/events/${eventId}`);
+                if (!response.ok) {
+                    throw new Error('Event not found');
+                }
+                const eventData = await response.json();
+                setEvent(eventData);
+            } catch (err) {
+                setError(err instanceof Error ? err.message : 'Failed to fetch event');
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        if (eventId) {
+            fetchEvent();
+        }
+    }, [eventId]);
+
+    if (loading) {
         return (
             <PageWrapper title="Event Details">
                 <main className="flex-1 flex items-center justify-center text-muted-foreground">
-                    Event not found.
+                    Loading event details...
+                </main>
+            </PageWrapper>
+        );
+    }
+
+    if (error || !event) {
+        return (
+            <PageWrapper title="Event Details">
+                <main className="flex-1 flex items-center justify-center text-muted-foreground">
+                    {error || 'Event not found.'}
                 </main>
             </PageWrapper>
         );
@@ -35,7 +81,7 @@ export default function EventDetailPage() {
                     <Card>
                         <CardHeader className="p-0">
                            <Image 
-                             src="https://placehold.co/1200x400.png"
+                             src={event.imageUrl || "https://placehold.co/1200x400.png"}
                              alt={event.title}
                              width={1200}
                              height={400}
@@ -48,20 +94,27 @@ export default function EventDetailPage() {
                              <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-sm text-muted-foreground mb-4">
                                 <div className="flex items-center gap-2">
                                     <Calendar className="h-4 w-4" />
-                                    <span>{format(event.date, "PPP")}</span>
+                                    <span>{format(new Date(event.date), "PPP")}</span>
                                 </div>
                                 <div className="flex items-center gap-2">
                                     <Clock className="h-4 w-4" />
-                                    <span>{format(event.date, "p")}</span>
+                                    <span>{format(new Date(event.date), "p")}</span>
                                 </div>
                                 <div className="flex items-center gap-2">
                                     <MapPin className="h-4 w-4" />
-                                    <span>University Auditorium</span>
+                                    <span>{event.location}</span>
                                 </div>
                             </div>
 
                             <CardContent className="p-0">
-                                <p className="text-base mb-6">{event.description} This is an extended description to provide more details about the event. We will cover various topics and have guest speakers from the industry. It's a great opportunity for networking and learning.</p>
+                                <p className="text-base mb-4">{event.description}</p>
+                                
+                                {event.extendedDescription && (
+                                  <div className="mb-6">
+                                    <h3 className="font-semibold text-lg mb-2">More Details</h3>
+                                    <p className="text-base text-muted-foreground">{event.extendedDescription}</p>
+                                  </div>
+                                )}
                                 
                                 <div className="flex items-center gap-2 flex-wrap">
                                     <Tag className="h-4 w-4 text-muted-foreground" />
