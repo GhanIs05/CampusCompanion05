@@ -37,7 +37,7 @@ A comprehensive campus management platform built with Next.js and Firebase, desi
 
 ## 🚀 Live Demo
 
-**Live Application**: [https://cc02--campusconnect-ee87d.asia-east1.hosted.app/admin](https://campuscompanion-demo.vercel.app)  
+**Live Application**: [https://cc02--campusconnect-ee87d.asia-east1.hosted.app/](https://cc02--campusconnect-ee87d.asia-east1.hosted.app/)  
 **GitHub Repository**: [https://github.com/kkek-041405/CampusCompanion](https://github.com/kkek-041405/CampusCompanion)
 
 ## 🛠️ Tech Stack
