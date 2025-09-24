@@ -7,7 +7,6 @@ A comprehensive campus management platform built with Next.js and Firebase, desi
 ### 📅 Event Management
 - **Create & Manage Events**: Students and organizers can create campus events with detailed information
 - **Image Upload**: Upload event images directly to Firebase Storage
-- **RSVP System**: Students can RSVP to events and track their attendance
 - **Event Discovery**: Browse upcoming campus events with filtering and search
 - **Extended Descriptions**: Rich event details with optional extended information
 
